@@ -387,7 +387,7 @@ Text Label 5200 1800 2    50   ~ 0
 EN
 Wire Wire Line
 	5200 1800 5350 1800
-Text Label 6700 1800 0    50   ~ 0
+Text Label 6700 1800 0    60   ~ 0
 IO0
 Wire Wire Line
 	6700 2100 6550 2100
@@ -1418,18 +1418,6 @@ Wire Wire Line
 Connection ~ 1050 8450
 Wire Wire Line
 	1050 8450 1050 8350
-$Comp
-L Device:C C8
-U 1 1 61C15625
-P 1050 8850
-F 0 "C8" H 1165 8896 50  0000 L CNN
-F 1 "1uF/50V" H 900 8750 50  0000 L CNN
-F 2 "Capacitor_SMD:C_0603_1608Metric" H 1088 8700 50  0001 C CNN
-F 3 "~" H 1050 8850 50  0001 C CNN
-F 4 "C15849" H 1050 8850 50  0001 C CNN "LCSC"
-	1    1050 8850
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	1050 8700 1050 8650
 Connection ~ 1050 8650
@@ -1987,17 +1975,17 @@ Text Label 5300 7850 2    50   ~ 0
 I36
 Text Label 5300 7950 2    50   ~ 0
 I39
-Text Label 6700 4000 0    50   ~ 0
+Text Label 6700 4000 0    60   ~ 0
 I34
-Text Label 6700 4100 0    50   ~ 0
+Text Label 6700 4100 0    60   ~ 0
 I35
 Text Label 5300 8050 2    50   ~ 0
 I34
 Text Label 5300 8150 2    50   ~ 0
 I35
-Text Label 6700 3800 0    50   ~ 0
+Text Label 6700 3800 0    60   ~ 0
 IO32
-Text Label 6700 3900 0    50   ~ 0
+Text Label 6700 3900 0    60   ~ 0
 IO33
 Text Label 5300 8250 2    50   ~ 0
 IO32
@@ -2048,15 +2036,15 @@ F 3 "" H 5150 7750 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	5150 7750 5300 7750
-Text Label 6700 2500 0    50   ~ 0
+Text Label 6700 2500 0    60   ~ 0
 IO13
-Text Label 6700 3300 0    50   ~ 0
+Text Label 6700 3300 0    60   ~ 0
 IO22
 Text Label 5300 8450 2    50   ~ 0
 IO22
-Text Label 6700 2800 0    50   ~ 0
+Text Label 6700 2800 0    60   ~ 0
 IO16
-Text Label 6700 2900 0    50   ~ 0
+Text Label 6700 2900 0    60   ~ 0
 IO17
 Wire Wire Line
 	6700 2900 6550 2900
@@ -2064,9 +2052,9 @@ Text Label 5300 8650 2    50   ~ 0
 IO16
 Text Label 5300 8550 2    50   ~ 0
 IO17
-Text Label 6700 2000 0    50   ~ 0
+Text Label 6700 2000 0    60   ~ 0
 IO2
-Text Label 6700 2700 0    50   ~ 0
+Text Label 6700 2700 0    60   ~ 0
 IO15
 Text Label 5300 8750 2    50   ~ 0
 IO2
@@ -2189,6 +2177,20 @@ F 1 "VS" H 10150 1300 50  0000 C CNN
 F 2 "" H 10050 1250 50  0001 C CNN
 F 3 "" H 10050 1250 50  0001 C CNN
 	1    10050 1250
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C?
+U 1 1 617F308D
+P 1050 8850
+AR Path="/5F1ED570/617F308D" Ref="C?"  Part="1" 
+AR Path="/617F308D" Ref="C8"  Part="1" 
+F 0 "C8" H 950 8950 50  0000 L CNN
+F 1 "1uF" H 850 8750 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0402_1005Metric" H 1088 8700 50  0001 C CNN
+F 3 "~" H 1050 8850 50  0001 C CNN
+F 4 "C52923" H 1050 8850 50  0001 C CNN "LCSC"
+	1    1050 8850
 	1    0    0    -1  
 $EndComp
 $EndSCHEMATC

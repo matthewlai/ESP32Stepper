@@ -35,7 +35,6 @@ Reference, Value, Footprint, Datasheet, LCSC
 "C16","1uF","Capacitor_SMD:C_0402_1005Metric","~","C52923"
 "C17","10uF","Capacitor_SMD:C_0402_1005Metric","~","C15525"
 "U2","XC6210B332MR","Package_TO_SOT_SMD:SOT-23-5","https://www.torexsemi.com/file/xc6210/XC6210.pdf","C47719"
-"C8","1uF/50V","Capacitor_SMD:C_0603_1608Metric","~","C15849"
 "C7","10uF","Capacitor_SMD:C_0402_1005Metric","~","C15525"
 "D4","D_Schottky","Diode_SMD:D_SOD-123","~","C8598"
 "D1","D_Schottky","Diode_SMD:D_SOD-123","~","C8598"
@@ -50,3 +49,4 @@ Reference, Value, Footprint, Datasheet, LCSC
 "J3","CONN_01X14","Connector_PinHeader_2.54mm:PinHeader_1x14_P2.54mm_Vertical",""
 "C5","0.1uF","Capacitor_SMD:C_0402_1005Metric","~","C1525"
 "C10","0.1uF/50V","Capacitor_SMD:C_0603_1608Metric","~","C14663"
+"C8","1uF","Capacitor_SMD:C_0402_1005Metric","~","C52923"
