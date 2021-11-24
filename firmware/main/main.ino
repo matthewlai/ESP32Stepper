@@ -128,7 +128,6 @@ void loop() {
     break;
   }
 
-
   if (homing_phase == HomingPhase::kDone) {
     // Once the homing is done, the valid range is (0, range).
   
@@ -140,23 +139,17 @@ void loop() {
     static float motor_speed = 0.0f;
 
     if (current_position < low_position_target) {
-      motor_speed = 500.0f;
+      motor_speed = 600.0f;
     } else if (current_position > high_position_target) {
-      motor_speed = -500.0f;
+      motor_speed = -600.0f;
     }
-    
-    //int32_t position_error = position_target - g_stepper_controller.GetCurrentPosition();
-    //float motor_speed = constrain(position_error * 0.5f, -50.0f, 50.0f);
   
     g_stepper_controller.SetTargetSpeedRPM(motor_speed);
-
-    if (g_stepper_controller.IsStallGuardValid()) {
-      Serial.println(g_stepper_controller.ReadStallGuardValue());
-    }
   }
 
-  g_stepper_controller.Update();
+  Serial.println(g_stepper_controller.ReadStallGuardValue());
 
-  // Run the control loop at approx 1000 Hz.
-  delay(1);
+  // Run the control loop at approx 100 Hz.
+  // This is only for velocity updates. Stepping happens asynchronously.
+  delay(10);
 }

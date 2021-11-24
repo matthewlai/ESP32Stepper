@@ -53,15 +53,15 @@ constexpr byte kSpeedEpsilon = 0.01f;
 // ----------------------------------------------------------------
 
 // Stepper ISR ----------------------------------------------------
-// This is the ISR for the timer used for stepping. Main thread
-// sets up the timer with the correct period, and give the current
-// direction (DIR output is driven by main thread), so in the ISR
-// we just have to generate pulses and count steps.
+// This is the ISR for the timer used for stepping. Note that no
+// floating point operations are allowed in ISRs, so they must be
+// converted to fixed point by the controller.
 
 // Current position kept track of by the ISR. Output to main thread.
 volatile int32_t g_current_position = 0;
 
 // Current direction (1 or -1). Input from main thread.
+// This is only used to update g_current_position.
 volatile int32_t g_current_dir_sign = 1;
 
 // Whether the next edge should be rising or falling. We use double
@@ -92,7 +92,6 @@ class TMC2590Controller {
 
   void Update();
 
-  
   bool IsStallGuardValid() { return fabs(current_speed_) > kStallGuardMinSpeed; }
   bool IsStalled() { return ReadStallGuardValue() == 0; }
   uint32_t ReadStallGuardValue();
@@ -164,12 +163,6 @@ void TMC2590Controller::Begin() {
   // SGT = 0 (StallGuard 2 threshold = 0)
   sgcsconf_ = 0xd0000;
 
-  // Convert 8-bit two's complement to 7-bit by dropping the high bit
-  uint8_t sgt_uint;
-  std::memcpy(&sgt_uint, &kStallGuardThreshold, 1);
-  
-  sgcsconf_ |= static_cast<uint32_t>(sgt_uint & 0x7f) << 8;
-
   // If our current limit scale is less than 0.5, use VSENSE=1 for better resolution.
   bool use_vsense_1 = kMotorCurrentLimitScale <= 0.5f;
   uint32_t cs = (use_vsense_1 ? (kMotorCurrentLimitScale * 2.0f) : kMotorCurrentLimitScale) * 0x1f;
@@ -225,7 +218,9 @@ void TMC2590Controller::Update() {
   uint32_t time_since_last_run = time_now - last_update_time_us_;
   last_update_time_us_ = time_now;
 
-  float max_speed_delta = time_since_last_run / 1000000.0f * kMaxAcceleration;
+  float max_acceleration = kMaxAcceleration;
+
+  float max_speed_delta = time_since_last_run / 1000000.0f * max_acceleration;
   float speed_to_ramp = target_speed_rpm_ - current_speed_;
 
   float speed_delta = constrain(speed_to_ramp, -max_speed_delta, max_speed_delta);
@@ -238,41 +233,39 @@ void TMC2590Controller::Update() {
 
   float new_speed = current_speed_ + speed_delta;
 
-  // If we are crossing over zero, always insert one control cycle of 0 speed, otherwise
-  // strange things can happen at high acceleration (possibly due to MicroPlyer interpolation.
-  if ((current_speed_ > kSpeedEpsilon && new_speed < -kSpeedEpsilon) ||
-      (current_speed_ < -kSpeedEpsilon && new_speed > kSpeedEpsilon)) {
-    new_speed = 0.0f;
-  }
-
   current_speed_ = new_speed;
 
-  if (fabs(current_speed_) < kSpeedEpsilon) {
-    if (step_timer_ != nullptr) {
-      timerEnd(step_timer_);
-      step_timer_ = nullptr;
-    }
-  } else {
-    uint32_t delay_us = 1000000.0f / (fabs(current_speed_) / 60.0f * kFullStepsPerRev * kMicrostepsPerFullStep);
-    
-    if (!step_timer_) {
-      step_timer_ = timerBegin(3, 80 /* APB_CLK / 80 = 1MHz*/, /*countUp=*/true);
-      timerAttachInterrupt(step_timer_, &StepperTimerHandler, 1);
-    }
-    
-    portENTER_CRITICAL_ISR(&g_stepper_timer_mux);
-    if (current_speed_ > 0) {
-      g_current_dir_sign = 1;
-      digitalWrite(kTmcDir, HIGH);
-    } else {
-      g_current_dir_sign = -1;
-      digitalWrite(kTmcDir, LOW);
-    }
+  uint32_t delay_us = 1000000.0f / (fabs(current_speed_) / 60.0f * kFullStepsPerRev * kMicrostepsPerFullStep);
 
-    timerAlarmWrite(step_timer_, delay_us, /*autoreload=*/true);
-    timerAlarmEnable(step_timer_);
-    portEXIT_CRITICAL_ISR(&g_stepper_timer_mux);
+  // Update StallGuard threshold since it seems to depend on the direction.
+  sgcsconf_ &= 0xffffff00ff;
+
+  // Convert 8-bit two's complement to 7-bit by dropping the high bit
+  uint8_t sgt_uint;
+  std::memcpy(&sgt_uint, &kStallGuardThreshold[(current_speed_ > 0 ? 0 : 1)], 1);
+  sgcsconf_ |= static_cast<uint32_t>(sgt_uint & 0x7f) << 8;
+  DoTransaction(sgcsconf_);
+  
+  portENTER_CRITICAL_ISR(&g_stepper_timer_mux);
+  if (current_speed_ > 0) {
+    g_current_dir_sign = 1;
+    digitalWrite(kTmcDir, HIGH);
+  } else {
+    g_current_dir_sign = -1;
+    digitalWrite(kTmcDir, LOW);
   }
+  
+  if (!step_timer_) {
+    step_timer_ = timerBegin(3, 80 /* APB_CLK / 80 = 1MHz*/, /*countUp=*/true);
+    timerAttachInterrupt(step_timer_, &StepperTimerHandler, 1);
+  }
+
+  timerAlarmWrite(step_timer_, delay_us, /*autoreload=*/true);
+
+  if (!timerAlarmEnabled(step_timer_)) {
+    timerAlarmEnable(step_timer_);
+  }
+  portEXIT_CRITICAL_ISR(&g_stepper_timer_mux);
 }
 
 uint32_t TMC2590Controller::ReadStallGuardValue() {
