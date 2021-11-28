@@ -119,6 +119,8 @@ class TMC2590Controller {
   // Speed we are currently commanding.
   float current_speed_;
 
+  float current_acceleration_;
+
   // Last time the control loop was run.
   uint32_t last_update_time_us_;
 
@@ -126,7 +128,11 @@ class TMC2590Controller {
 };
 
 TMC2590Controller::TMC2590Controller()
-  : tmc_spi_(nullptr), target_speed_rpm_(0.0f), last_update_time_us_(0),
+  : tmc_spi_(nullptr),
+    target_speed_rpm_(0.0f),
+    current_speed_(0.0f),
+    current_acceleration_(0.0f),
+    last_update_time_us_(0),
     step_timer_(nullptr) {}
 
 void TMC2590Controller::Begin() {
@@ -210,28 +216,59 @@ void TMC2590Controller::Begin() {
 
 void TMC2590Controller::SetTargetSpeedRPM(float speed_rpm) {
   target_speed_rpm_ = speed_rpm;
-  Update();
 }
 
 void TMC2590Controller::Update() {
   uint32_t time_now = micros();
-  uint32_t time_since_last_run = time_now - last_update_time_us_;
+  float time_delta = (time_now - last_update_time_us_) / 1000000.0f;
+  float reciprocal_time_delta = 1.0f / time_delta;
   last_update_time_us_ = time_now;
 
-  float max_acceleration = kMaxAcceleration;
+  // Update acceleration.
+  float velocity_error = target_speed_rpm_ - current_speed_;
 
-  float max_speed_delta = time_since_last_run / 1000000.0f * max_acceleration;
-  float speed_to_ramp = target_speed_rpm_ - current_speed_;
+  // First start with target acceleration that would take us to target velocity in one step.
+  float acceleration_target = velocity_error * reciprocal_time_delta;
 
-  float speed_delta = constrain(speed_to_ramp, -max_speed_delta, max_speed_delta);
+  // Constrain target acceleration to torque limits.
+  acceleration_target = constrain(acceleration_target, -kMaxAcceleration, kMaxAcceleration);
+
+  // Constrain the acceleration to avoid overshoot due to jerk limit.
+  float a_max = sqrt(kMaxJerk * fabs(target_speed_rpm_ - current_speed_));
+
+  if (target_speed_rpm_ > current_speed_) {
+    if (acceleration_target > a_max) {
+      acceleration_target = a_max;
+    }
+  } else {
+    if (acceleration_target < -a_max) {
+      acceleration_target = -a_max;
+    }
+  }
+
+  float acceleration_error = acceleration_target - current_acceleration_;
+
+  // Calculate actual acceleration update subject to jerk limit.
+  float acceleration_update = constrain(acceleration_error, -kMaxJerk * time_delta, kMaxJerk * time_delta);
+  current_acceleration_ = constrain(current_acceleration_ + acceleration_update, -kMaxAcceleration, kMaxAcceleration);
+
+  // Update speed.
+  float new_speed = current_speed_ + current_acceleration_ * time_delta;
+
+  Serial.print("Vt:");
+  Serial.print(target_speed_rpm_);
+  Serial.print("\t");
+  Serial.print("V:");
+  Serial.print(new_speed);
+  Serial.print("\t");
+  Serial.print("SG:");
+  Serial.println(ReadStallGuardValue());
 
   // Don't bother if we are basically at the target speed already (otherwise we
   // will be changing the timer period unnecessarily all the time).
-  if (fabs(speed_delta) < kSpeedEpsilon) {
-    return;
-  }
-
-  float new_speed = current_speed_ + speed_delta;
+  //if (fabs(new_speed - current_speed_) < kSpeedEpsilon) {
+  //  return;
+  //}
 
   current_speed_ = new_speed;
 

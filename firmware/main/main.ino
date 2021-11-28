@@ -6,6 +6,7 @@
 #include <SPI.h>
 
 #include "config.h"
+#include "delay_inserter.h"
 #include "stepper_control.h"
 
 // Pin definitions ------------------------------------------------
@@ -60,10 +61,12 @@ enum class HomingPhase {
 };
 
 void loop() {
+  auto t = millis();
+  int32_t millis_since_last_iteration = 0;
+
   constexpr float kPeriodMs = 1000.0f;
   constexpr float kBrightness = 0.1f;
   constexpr float kCoeff = (2 * M_PI) / kPeriodMs;
-  auto t = millis();
   float r = sin(kCoeff * t) * 0.5f + 0.5f;
   float g = sin(kCoeff * t + (0.33f * 2.0f * M_PI)) * 0.5f + 0.5f;
   float b = sin(kCoeff * t + (0.66f * 2.0f * M_PI)) * 0.5f + 0.5f;
@@ -147,9 +150,13 @@ void loop() {
     g_stepper_controller.SetTargetSpeedRPM(motor_speed);
   }
 
-  Serial.println(g_stepper_controller.ReadStallGuardValue());
+  //Serial.println(g_stepper_controller.ReadStallGuardValue());
 
-  // Run the control loop at approx 100 Hz.
+  // Run the control loop at approx 200 Hz.
   // This is only for velocity updates. Stepping happens asynchronously.
-  delay(10);
+  // We put the delay inserter here because this is the most crucial part
+  // for loop timing.
+  static DelayInserter<5000> delay_inserter;
+  delay_inserter.Sync();
+  g_stepper_controller.Update();
 }

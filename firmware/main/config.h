@@ -3,12 +3,15 @@
 
 // Stepper config -------------------------------------------------------------
 // Motor current limit in Amps(rms). Maximum supported by this board is 4.6A.
-constexpr float kMotorCurrentLimit = 1.2f;
+constexpr float kMotorCurrentLimit = 1.6f;
 
 constexpr int kFullStepsPerRev = 200;
 
 // Maximum acceleration in RPM/s.
 constexpr float kMaxAcceleration = 6000.0f;
+
+// Maximum jerk in RPM/s^2
+constexpr float kMaxJerk = 80000.0f;
 
 constexpr float kHomingSpeed = 100.0f;
 
