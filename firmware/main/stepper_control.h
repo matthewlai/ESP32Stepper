@@ -23,8 +23,6 @@ const SPISettings kTmcSpiSettings(4 * 1000 * 1000, MSBFIRST,
 
 // Motor current limit. 1.0 = 4.6A.
 constexpr float kMotorCurrentLimitMax = 4.6f;
-constexpr float kMotorCurrentLimitScale =
-    constrain(kMotorCurrentLimit / kMotorCurrentLimitMax, 0.0f, 1.0f);
 
 // 0x0 -> 256
 // 0x1 -> 128
@@ -101,6 +99,9 @@ class TMC2590Controller {
   void SetCurrentPosition(int32_t new_position);
   float GetCurrentSpeed() { return current_speed_; }
 
+  void SetMotorCurrent(float new_current_setting);
+  void SetJerkLimit(float jerk_limit) { jerk_limit_ = jerk_limit; }
+
  private:
   uint32_t DoTransaction(uint32_t x);
 
@@ -121,6 +122,8 @@ class TMC2590Controller {
 
   float current_acceleration_;
 
+  float jerk_limit_;
+
   // Last time the control loop was run.
   uint32_t last_update_time_us_;
 
@@ -132,6 +135,7 @@ TMC2590Controller::TMC2590Controller()
     target_speed_rpm_(0.0f),
     current_speed_(0.0f),
     current_acceleration_(0.0f),
+    jerk_limit_(kMaxJerk),
     last_update_time_us_(0),
     step_timer_(nullptr) {}
 
@@ -169,11 +173,6 @@ void TMC2590Controller::Begin() {
   // SGT = 0 (StallGuard 2 threshold = 0)
   sgcsconf_ = 0xd0000;
 
-  // If our current limit scale is less than 0.5, use VSENSE=1 for better resolution.
-  bool use_vsense_1 = kMotorCurrentLimitScale <= 0.5f;
-  uint32_t cs = (use_vsense_1 ? (kMotorCurrentLimitScale * 2.0f) : kMotorCurrentLimitScale) * 0x1f;
-
-  sgcsconf_ |= cs;
   DoTransaction(sgcsconf_);
 
   // 1110 1111 1000 0011 0011
@@ -191,10 +190,6 @@ void TMC2590Controller::Begin() {
   // EN_PFD = 1
   // EN_S2VS = 1
   drvconf_ = 0xea813;
-
-  if (use_vsense_1) {
-    drvconf_ |= 0x00040;
-  }
   
   DoTransaction(drvconf_);
 
@@ -209,6 +204,8 @@ void TMC2590Controller::Begin() {
     drvctrl_ |= kMicrostepsSetting;
   }
   DoTransaction(drvctrl_);
+
+  SetMotorCurrent(kMotorCurrentLimit);
 
   // Enable motor drivers.
   digitalWrite(kTmcEn, LOW);
@@ -234,7 +231,7 @@ void TMC2590Controller::Update() {
   acceleration_target = constrain(acceleration_target, -kMaxAcceleration, kMaxAcceleration);
 
   // Constrain the acceleration to avoid overshoot due to jerk limit.
-  float a_max = sqrt(kMaxJerk * fabs(target_speed_rpm_ - current_speed_));
+  float a_max = sqrt(jerk_limit_ * fabs(target_speed_rpm_ - current_speed_));
 
   if (target_speed_rpm_ > current_speed_) {
     if (acceleration_target > a_max) {
@@ -249,7 +246,7 @@ void TMC2590Controller::Update() {
   float acceleration_error = acceleration_target - current_acceleration_;
 
   // Calculate actual acceleration update subject to jerk limit.
-  float acceleration_update = constrain(acceleration_error, -kMaxJerk * time_delta, kMaxJerk * time_delta);
+  float acceleration_update = constrain(acceleration_error, -jerk_limit_ * time_delta, jerk_limit_ * time_delta);
   current_acceleration_ = constrain(current_acceleration_ + acceleration_update, -kMaxAcceleration, kMaxAcceleration);
 
   // Update speed.
@@ -335,6 +332,27 @@ void TMC2590Controller::SetCurrentPosition(int32_t new_position) {
   portENTER_CRITICAL_ISR(&g_stepper_timer_mux);
   g_current_position = new_position;
   portEXIT_CRITICAL_ISR(&g_stepper_timer_mux);
+}
+
+void TMC2590Controller::SetMotorCurrent(float new_current_setting) {
+  float scaled_current_limit =
+    constrain(new_current_setting / kMotorCurrentLimitMax, 0.0f, 1.0f);
+
+  // If our scaled current limit is less than 0.5, use VSENSE=1 for better resolution.
+  bool use_vsense_1 = scaled_current_limit <= 0.5f;
+  uint32_t cs = (use_vsense_1 ? (scaled_current_limit * 2.0f) : scaled_current_limit) * 0x1f;
+
+  sgcsconf_ &= ~0x1f;
+  sgcsconf_ |= cs;
+  DoTransaction(sgcsconf_);
+  
+  if (use_vsense_1) {
+    drvconf_ |= 0x00040;
+  } else {
+    drvconf_ &= ~0x00040;
+  }
+  
+  DoTransaction(drvconf_);
 }
 
 // TMC2590 requires 20-bit writes, and return 20-bit status. ESP32

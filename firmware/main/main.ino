@@ -53,16 +53,13 @@ void setup() {
 
 enum class HomingPhase {
   kStart,
-  kAccelerating,
-  kDrivingForward,
-  kAcceleratingBackward,
-  kDrivingBackward,
+  kForward,
+  kBackward,
   kDone
 };
 
 void loop() {
   auto t = millis();
-  int32_t millis_since_last_iteration = 0;
 
   constexpr float kPeriodMs = 1000.0f;
   constexpr float kBrightness = 0.1f;
@@ -78,47 +75,34 @@ void loop() {
   static int32_t backward_position = 0;
   static int32_t range = 0;
 
-  static int32_t stall_detection_delay = 10;
-
   switch (homing_phase) {
    case HomingPhase::kStart:
     // Disable stallguard filtering for faster response.
     g_stepper_controller.SetStallGuardFiltering(false);
-    homing_phase = HomingPhase::kAccelerating;
+    g_stepper_controller.SetJerkLimit(kHomingMaxJerk);
+    g_stepper_controller.SetMotorCurrent(kHomingCurrent);
+    homing_phase = HomingPhase::kForward;
     break;
-   case HomingPhase::kAccelerating:
+   case HomingPhase::kForward:
     g_stepper_controller.SetTargetSpeedRPM(kHomingSpeed);
-    if (g_stepper_controller.GetCurrentSpeed() > (kHomingSpeed * 0.9f)) {
-      --stall_detection_delay;
-      if (stall_detection_delay <= 0) {
-        homing_phase = HomingPhase::kDrivingForward;
-        stall_detection_delay = 10;
-      }
-    }
-    break;
-   case HomingPhase::kDrivingForward:
-    if (g_stepper_controller.IsStalled()) {
+    if ((g_stepper_controller.GetCurrentSpeed() > (kHomingSpeed * 0.9f)) &&
+        g_stepper_controller.IsStalled()) {
       forward_position = g_stepper_controller.GetCurrentPosition();
       g_stepper_controller.SetTargetSpeedRPM(-kHomingSpeed);
-      homing_phase = HomingPhase::kAcceleratingBackward;
+      homing_phase = HomingPhase::kBackward;
     }
     break;
-   case HomingPhase::kAcceleratingBackward:
-    if (g_stepper_controller.GetCurrentSpeed() < -(kHomingSpeed * 0.9f)) {
-      --stall_detection_delay;
-      if (stall_detection_delay <= 0) {
-        homing_phase = HomingPhase::kDrivingBackward;
-        stall_detection_delay = 10;
-      }
-    }
-    break;
-   case HomingPhase::kDrivingBackward:
-    if (g_stepper_controller.IsStalled()) {
+   case HomingPhase::kBackward:
+   g_stepper_controller.SetTargetSpeedRPM(-kHomingSpeed);
+    if ((g_stepper_controller.GetCurrentSpeed() < -(kHomingSpeed * 0.9f)) &&
+        g_stepper_controller.IsStalled()) {
       backward_position = g_stepper_controller.GetCurrentPosition();
       range = forward_position - backward_position;
       g_stepper_controller.SetTargetSpeedRPM(0.0f);
       g_stepper_controller.SetCurrentPosition(0);
       g_stepper_controller.SetStallGuardFiltering(true);
+      g_stepper_controller.SetJerkLimit(kMaxJerk);
+      g_stepper_controller.SetMotorCurrent(kMotorCurrentLimit);
       homing_phase = HomingPhase::kDone;
       Serial.println("Homing Done!");
       Serial.print("Forward Position: ");
@@ -149,8 +133,6 @@ void loop() {
   
     g_stepper_controller.SetTargetSpeedRPM(motor_speed);
   }
-
-  //Serial.println(g_stepper_controller.ReadStallGuardValue());
 
   // Run the control loop at approx 200 Hz.
   // This is only for velocity updates. Stepping happens asynchronously.
