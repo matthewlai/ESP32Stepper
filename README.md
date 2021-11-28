@@ -15,6 +15,10 @@ The firmware is Arduino based, using the arduino-esp32 port by Espressif.
     * Port: serial port for the board
     * All other settings as default (240 MHz CPU, 80 MHz flash, QIO, 4MB flash, default 4MB partition scheme, no PSRAM)
 
+## Customisation
+
+1. Set motor-specific parameters in config.h
+
 ## Required Libraries
 
 1. Adafruit Neopixel 1.10.0x
