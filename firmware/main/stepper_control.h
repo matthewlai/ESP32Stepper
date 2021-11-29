@@ -48,6 +48,8 @@ constexpr byte kMicrostepsPerFullStep = 4;
 
 // Speed in RPM below which we consider the motor stopped.
 constexpr byte kSpeedEpsilon = 0.01f;
+
+constexpr float kRevsPerMicroStep = 1.0f / (kFullStepsPerRev * kMicrostepsPerFullStep);
 // ----------------------------------------------------------------
 
 // Stepper ISR ----------------------------------------------------
@@ -86,7 +88,15 @@ class TMC2590Controller {
 
   void Begin();
 
-  void SetTargetSpeedRPM(float speed_rpm);
+  void SetTargetSpeed(float speed_rps);
+  void SetTargetSpeedRPM(float speed_rpm) { SetTargetSpeed(speed_rpm / 60.0f); }
+
+  // Use built-in planner to update target speed to get to target
+  // position without overshooting.
+  // Note that this class is fundamentally a velocity-based controller,
+  // so this convenience function needs to be called before every update to update target 
+  // velocity. This is NOT done automatically as part of Update();
+  void UpdateTargetSpeedByPosition(int32_t target_position, float max_speed_rpm);
 
   void Update();
 
@@ -98,6 +108,7 @@ class TMC2590Controller {
   int32_t GetCurrentPosition();
   void SetCurrentPosition(int32_t new_position);
   float GetCurrentSpeed() { return current_speed_; }
+  float GetCurrentSpeedRPM() { return current_speed_ * 60.0f; }
 
   void SetMotorCurrent(float new_current_setting);
   void SetJerkLimit(float jerk_limit) { jerk_limit_ = jerk_limit; }
@@ -114,8 +125,8 @@ class TMC2590Controller {
   uint32_t drvconf_;
   uint32_t drvctrl_;
 
-  // Speed we are ramping to.
-  float target_speed_rpm_;
+  // Speed we are ramping to (Rev/s).
+  float target_speed_;
 
   // Speed we are currently commanding.
   float current_speed_;
@@ -132,7 +143,7 @@ class TMC2590Controller {
 
 TMC2590Controller::TMC2590Controller()
   : tmc_spi_(nullptr),
-    target_speed_rpm_(0.0f),
+    target_speed_(0.0f),
     current_speed_(0.0f),
     current_acceleration_(0.0f),
     jerk_limit_(kMaxJerk),
@@ -211,8 +222,46 @@ void TMC2590Controller::Begin() {
   digitalWrite(kTmcEn, LOW);
 }
 
-void TMC2590Controller::SetTargetSpeedRPM(float speed_rpm) {
-  target_speed_rpm_ = speed_rpm;
+void TMC2590Controller::SetTargetSpeed(float speed_rps) {
+  target_speed_ = speed_rps;
+}
+
+void TMC2590Controller::UpdateTargetSpeedByPosition(
+    int32_t target_position, float max_speed_rpm) {
+  int32_t current_position = GetCurrentPosition();
+  float position_error = fabs((target_position - current_position) * kRevsPerMicroStep);
+
+  // Given the current position error and our max acceleration,
+  // how fast can we be at this point and not overshoot?
+  // Note that this calculation ignores jerk limit, so it's not
+  // 100% accurate. This also doesn't take into account the current
+  // speed (it assumes we are accelerating to the target velocity
+  // at infinite acceleration), so it's not optimally efficient.
+
+  // Displacement under constant acceleration is:
+  // d = v0 * t + (1/2) * a * t^2
+  //
+  // d = position_error
+  // a = -kMaxAcceleration (assuming v0 > 0, d > 0)
+  // t = v0 / -a
+  // d = v0 * v0 / -a + (1/2) * a * (v0^2 / a^2)
+  //   = -(v0^2 / a) + (1/2) * v0^2 / a
+  //   = -(1/2) v0^2 / a
+  //   = (1/2) v0^2 / kMaxAcceleration
+  //
+  // |v0| = sqrt(2 * d * kMaxAcceleration)
+
+  // TODO: Figure out how we have to drop the 2x to stop overshooting.
+  float v_abs = sqrt(position_error * kMaxAcceleration);
+  float v = 0.0f;
+
+  if (current_position < target_position) {
+    v = min(max_speed_rpm / 60.0f, v_abs);
+  } else {
+    v = max(-max_speed_rpm / 60.0f, -v_abs);
+  }
+
+  SetTargetSpeed(v);
 }
 
 void TMC2590Controller::Update() {
@@ -222,7 +271,7 @@ void TMC2590Controller::Update() {
   last_update_time_us_ = time_now;
 
   // Update acceleration.
-  float velocity_error = target_speed_rpm_ - current_speed_;
+  float velocity_error = target_speed_ - current_speed_;
 
   // First start with target acceleration that would take us to target velocity in one step.
   float acceleration_target = velocity_error * reciprocal_time_delta;
@@ -231,9 +280,10 @@ void TMC2590Controller::Update() {
   acceleration_target = constrain(acceleration_target, -kMaxAcceleration, kMaxAcceleration);
 
   // Constrain the acceleration to avoid overshoot due to jerk limit.
-  float a_max = sqrt(jerk_limit_ * fabs(target_speed_rpm_ - current_speed_));
+  // TODO: Figure out how we have to drop the 2x to stop overshooting.
+  float a_max = sqrt(jerk_limit_ * fabs(target_speed_ - current_speed_));
 
-  if (target_speed_rpm_ > current_speed_) {
+  if (target_speed_ > current_speed_) {
     if (acceleration_target > a_max) {
       acceleration_target = a_max;
     }
@@ -252,24 +302,24 @@ void TMC2590Controller::Update() {
   // Update speed.
   float new_speed = current_speed_ + current_acceleration_ * time_delta;
 
-  Serial.print("Vt:");
-  Serial.print(target_speed_rpm_);
+  Serial.print("A:");
+  Serial.print(current_acceleration_ / 10.0f);
   Serial.print("\t");
   Serial.print("V:");
   Serial.print(new_speed);
   Serial.print("\t");
+  Serial.print("Vt:");
+  Serial.print(target_speed_);
+  Serial.print("\t");
+  Serial.print("P:");
+  Serial.print(GetCurrentPosition());
+  Serial.print("\t");
   Serial.print("SG:");
   Serial.println(ReadStallGuardValue());
 
-  // Don't bother if we are basically at the target speed already (otherwise we
-  // will be changing the timer period unnecessarily all the time).
-  //if (fabs(new_speed - current_speed_) < kSpeedEpsilon) {
-  //  return;
-  //}
-
   current_speed_ = new_speed;
 
-  uint32_t delay_us = 1000000.0f / (fabs(current_speed_) / 60.0f * kFullStepsPerRev * kMicrostepsPerFullStep);
+  uint32_t delay_us = 1000000.0f / (fabs(current_speed_) * kFullStepsPerRev * kMicrostepsPerFullStep);
 
   // Update StallGuard threshold since it seems to depend on the direction.
   sgcsconf_ &= 0xffffff00ff;
