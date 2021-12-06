@@ -79,13 +79,14 @@ void loop() {
    case HomingPhase::kStart:
     // Disable stallguard filtering for faster response.
     g_stepper_controller.SetStallGuardFiltering(false);
+    g_stepper_controller.SetAccelerationLimit(kHomingAcceleration);
     g_stepper_controller.SetJerkLimit(kHomingMaxJerk);
     g_stepper_controller.SetMotorCurrent(kHomingCurrent);
     homing_phase = HomingPhase::kForward;
     break;
    case HomingPhase::kForward:
     g_stepper_controller.SetTargetSpeedRPM(kHomingSpeedRPM);
-    if ((g_stepper_controller.GetCurrentSpeedRPM() > (kHomingSpeedRPM * 0.9f)) &&
+    if ((g_stepper_controller.GetCurrentSpeedRPM() > (kHomingSpeedRPM * 0.99f)) &&
         g_stepper_controller.IsStalled()) {
       forward_position = g_stepper_controller.GetCurrentPosition();
       g_stepper_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
@@ -94,13 +95,14 @@ void loop() {
     break;
    case HomingPhase::kBackward:
    g_stepper_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
-    if ((g_stepper_controller.GetCurrentSpeedRPM() < -(kHomingSpeedRPM * 0.9f)) &&
+    if ((g_stepper_controller.GetCurrentSpeedRPM() < -(kHomingSpeedRPM * 0.99f)) &&
         g_stepper_controller.IsStalled()) {
       backward_position = g_stepper_controller.GetCurrentPosition();
       range = forward_position - backward_position;
       g_stepper_controller.SetTargetSpeedRPM(0.0f);
       g_stepper_controller.SetCurrentPosition(0);
       g_stepper_controller.SetStallGuardFiltering(true);
+      g_stepper_controller.SetAccelerationLimit(kMaxAcceleration);
       g_stepper_controller.SetJerkLimit(kMaxJerk);
       g_stepper_controller.SetMotorCurrent(kMotorCurrentLimit);
       homing_phase = HomingPhase::kDone;
@@ -118,11 +120,11 @@ void loop() {
   if (homing_phase == HomingPhase::kDone) {
     // Once the homing is done, the valid range is (0, range).
   
-    static int32_t low_position_target = 3.0f * range / 8;
-    static int32_t high_position_target = 5.0f * range / 8;
+    static int32_t low_position_target = 3.5f * range / 8;
+    static int32_t high_position_target = 4.5f * range / 8;
 
-    static int32_t low_position_threshold = 3.2f * range / 8;
-    static int32_t high_position_threshold = 4.8f * range / 8;
+    static int32_t low_position_threshold = 3.6f * range / 8;
+    static int32_t high_position_threshold = 4.4f * range / 8;
 
     static int32_t current_target = low_position_target;
 
@@ -134,7 +136,7 @@ void loop() {
       current_target = high_position_target;
     }
 
-     g_stepper_controller.UpdateTargetSpeedByPosition(current_target, 600.0f);
+     g_stepper_controller.UpdateTargetSpeedByPosition(current_target, kMaxSpeed);
   }
 
   // Run the control loop at approx 200 Hz.

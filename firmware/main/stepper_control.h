@@ -111,6 +111,7 @@ class TMC2590Controller {
   float GetCurrentSpeedRPM() { return current_speed_ * 60.0f; }
 
   void SetMotorCurrent(float new_current_setting);
+  void SetAccelerationLimit(float acceleration_limit) { acceleration_limit_ = acceleration_limit; }
   void SetJerkLimit(float jerk_limit) { jerk_limit_ = jerk_limit; }
 
  private:
@@ -133,6 +134,7 @@ class TMC2590Controller {
 
   float current_acceleration_;
 
+  float acceleration_limit_;
   float jerk_limit_;
 
   // Last time the control loop was run.
@@ -146,6 +148,7 @@ TMC2590Controller::TMC2590Controller()
     target_speed_(0.0f),
     current_speed_(0.0f),
     current_acceleration_(0.0f),
+    acceleration_limit_(kMaxAcceleration),
     jerk_limit_(kMaxJerk),
     last_update_time_us_(0),
     step_timer_(nullptr) {}
@@ -242,17 +245,17 @@ void TMC2590Controller::UpdateTargetSpeedByPosition(
   // d = v0 * t + (1/2) * a * t^2
   //
   // d = position_error
-  // a = -kMaxAcceleration (assuming v0 > 0, d > 0)
+  // a = -acceleration_limit_ (assuming v0 > 0, d > 0)
   // t = v0 / -a
   // d = v0 * v0 / -a + (1/2) * a * (v0^2 / a^2)
   //   = -(v0^2 / a) + (1/2) * v0^2 / a
   //   = -(1/2) v0^2 / a
-  //   = (1/2) v0^2 / kMaxAcceleration
+  //   = (1/2) v0^2 / acceleration_limit_
   //
-  // |v0| = sqrt(2 * d * kMaxAcceleration)
+  // |v0| = sqrt(2 * d * acceleration_limit_)
 
   // TODO: Figure out how we have to drop the 2x to stop overshooting.
-  float v_abs = sqrt(position_error * kMaxAcceleration);
+  float v_abs = sqrt(position_error * acceleration_limit_);
   float v = 0.0f;
 
   if (current_position < target_position) {
@@ -276,9 +279,6 @@ void TMC2590Controller::Update() {
   // First start with target acceleration that would take us to target velocity in one step.
   float acceleration_target = velocity_error * reciprocal_time_delta;
 
-  // Constrain target acceleration to torque limits.
-  acceleration_target = constrain(acceleration_target, -kMaxAcceleration, kMaxAcceleration);
-
   // Constrain the acceleration to avoid overshoot due to jerk limit.
   // TODO: Figure out how we have to drop the 2x to stop overshooting.
   float a_max = sqrt(jerk_limit_ * fabs(target_speed_ - current_speed_));
@@ -297,22 +297,22 @@ void TMC2590Controller::Update() {
 
   // Calculate actual acceleration update subject to jerk limit.
   float acceleration_update = constrain(acceleration_error, -jerk_limit_ * time_delta, jerk_limit_ * time_delta);
-  current_acceleration_ = constrain(current_acceleration_ + acceleration_update, -kMaxAcceleration, kMaxAcceleration);
+  current_acceleration_ = constrain(current_acceleration_ + acceleration_update, -acceleration_limit_, acceleration_limit_);
 
   // Update speed.
   float new_speed = current_speed_ + current_acceleration_ * time_delta;
 
   Serial.print("A:");
-  Serial.print(current_acceleration_ / 10.0f);
+  Serial.print(current_acceleration_);
   Serial.print("\t");
   Serial.print("V:");
-  Serial.print(new_speed);
+  Serial.print(new_speed * 60.0f);
   Serial.print("\t");
   Serial.print("Vt:");
-  Serial.print(target_speed_);
+  Serial.print(target_speed_ * 60.0f);
   Serial.print("\t");
   Serial.print("P:");
-  Serial.print(GetCurrentPosition());
+  Serial.print(GetCurrentPosition() / 3.0f);
   Serial.print("\t");
   Serial.print("SG:");
   Serial.println(ReadStallGuardValue());
@@ -333,10 +333,10 @@ void TMC2590Controller::Update() {
   portENTER_CRITICAL_ISR(&g_stepper_timer_mux);
   if (current_speed_ > 0) {
     g_current_dir_sign = 1;
-    digitalWrite(kTmcDir, HIGH);
+    digitalWrite(kTmcDir, kFlipDrivingDirection ? LOW : HIGH);
   } else {
     g_current_dir_sign = -1;
-    digitalWrite(kTmcDir, LOW);
+    digitalWrite(kTmcDir, kFlipDrivingDirection ? HIGH : LOW);
   }
   
   if (!step_timer_) {
