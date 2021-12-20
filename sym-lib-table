@@ -12,4 +12,5 @@
   (lib (name xl1509)(type Legacy)(uri ${KIPRJMOD}/library/xl1509.lib)(options "")(descr ""))
   (lib (name trinamic)(type Legacy)(uri ${KIPRJMOD}/library/trinamic.lib)(options "")(descr ""))
   (lib (name tmc2590-ta-trinamic)(type Legacy)(uri ${KIPRJMOD}/library/tmc2590-ta-trinamic.lib)(options "")(descr ""))
+  (lib (name TMC2160-TA)(type Legacy)(uri ${KIPRJMOD}/library/TMC2160-TA.lib)(options "")(descr ""))
 )
