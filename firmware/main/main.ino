@@ -5,6 +5,7 @@
 
 #include <SPI.h>
 
+#include "ble.h"
 #include "config.h"
 #include "delay_inserter.h"
 #include "stepper_control.h"
@@ -71,6 +72,17 @@ void loop() {
 
   static HomingPhase homing_phase = HomingPhase::kStart;
 
+  static WoodpeckerBLEServer ble_server;
+
+  static bool last_run_setting = false;
+  bool run_setting = ble_server.Started();
+
+  if (last_run_setting != run_setting) {
+    Serial.print("Start is now: ");
+    Serial.println(run_setting);
+    last_run_setting = run_setting;
+  }
+
   static int32_t forward_position = 0;
   static int32_t backward_position = 0;
   static int32_t range = 0;
@@ -118,6 +130,18 @@ void loop() {
   }
 
   if (homing_phase == HomingPhase::kDone) {
+    g_stepper_controller.SetTargetSpeed(0.0f);
+
+    int32_t target = range * 0.5f;
+    if (g_stepper_controller.GetCurrentPosition() < (target + range * 0.01f) && g_stepper_controller.GetCurrentPosition() > (target - range * 0.01f)) {
+      g_stepper_controller.SetTargetSpeed(0.0f);
+    } else {
+      g_stepper_controller.UpdateTargetSpeedByPosition(target, kMaxSpeed);
+    }
+  }
+
+  /*
+  if (homing_phase == HomingPhase::kDone) {
     // Once the homing is done, the valid range is (0, range).
   
     static int32_t low_position_target = 3.5f * range / 8;
@@ -138,12 +162,13 @@ void loop() {
 
      g_stepper_controller.UpdateTargetSpeedByPosition(current_target, kMaxSpeed);
   }
+  */
 
-  // Run the control loop at approx 200 Hz.
+  // Run the control loop at approx 1000 Hz.
   // This is only for velocity updates. Stepping happens asynchronously.
   // We put the delay inserter here because this is the most crucial part
   // for loop timing.
-  static DelayInserter<5000> delay_inserter;
+  static DelayInserter<1000> delay_inserter;
   delay_inserter.Sync();
   g_stepper_controller.Update();
 }
