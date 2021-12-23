@@ -321,7 +321,7 @@ void TMC2590Controller::Update() {
 
   current_speed_ = new_speed;
 
-  uint32_t delay_us = 1000000.0f / (fabs(current_speed_) * kFullStepsPerRev * kMicrostepsPerFullStep);
+  uint32_t delay_us = 1000000.0f / (max(fabs(current_speed_), 0.000001f) * kFullStepsPerRev * kMicrostepsPerFullStep);
 
   // Update StallGuard threshold since it seems to depend on the direction.
   sgcsconf_ &= 0xffffff00ff;
