@@ -18,7 +18,6 @@ class WoodpeckerBLEServer : public BLEServerCallbacks {
  private:
   void onConnect(BLEServer* pServer) {
     Serial.println("On connect");
-    BLEDevice::startAdvertising();
   };
 
   void onDisconnect(BLEServer* pServer) {
