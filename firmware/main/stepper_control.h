@@ -302,20 +302,22 @@ void TMC2590Controller::Update() {
   // Update speed.
   float new_speed = current_speed_ + current_acceleration_ * time_delta;
 
-  Serial.print("A:");
-  Serial.print(current_acceleration_);
-  Serial.print("\t");
-  Serial.print("V:");
-  Serial.print(new_speed * 60.0f);
-  Serial.print("\t");
-  Serial.print("Vt:");
-  Serial.print(target_speed_ * 60.0f);
-  Serial.print("\t");
-  Serial.print("P:");
-  Serial.print(GetCurrentPosition() / 3.0f);
-  Serial.print("\t");
-  Serial.print("SG:");
-  Serial.println(ReadStallGuardValue());
+  if (kStepperDebugPlotting) {
+    Serial.print("A:");
+    Serial.print(current_acceleration_);
+    Serial.print("\t");
+    Serial.print("V:");
+    Serial.print(new_speed * 60.0f);
+    Serial.print("\t");
+    Serial.print("Vt:");
+    Serial.print(target_speed_ * 60.0f);
+    Serial.print("\t");
+    Serial.print("P:");
+    Serial.print(GetCurrentPosition() / 3.0f);
+    Serial.print("\t");
+    Serial.print("SG:");
+    Serial.println(ReadStallGuardValue());
+  }
 
   current_speed_ = new_speed;
 

@@ -30,10 +30,18 @@ constexpr float kHomingMaxJerk = 1000000.0f;
 // StallGuard 2 sensitivity setting. See 5. StallGuard2 Load Measurement in
 // the datasheet. Higher values = less sensitive. (63 to -64).
 // Value per direcion [forward, backward].
-constexpr int8_t kStallGuardThreshold[2] = { 4, 0 };
+constexpr int8_t kStallGuardThreshold[2] = { 4, -2 };
 
 // StallGuard doesn't work at very low velocities due to weak back-emf.
 constexpr float kStallGuardMinSpeed = 60.0f;
+
+// ----------------------------------------------------------------------------
+
+// Program Config -------------------------------------------------------------
+
+// Output all stepper / trajectory parameters at each control step for plotting.
+// (Can cause step skipping due to the volume of data printed).
+constexpr bool kStepperDebugPlotting = false;
 
 // ----------------------------------------------------------------------------
 
