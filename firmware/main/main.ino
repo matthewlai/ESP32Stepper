@@ -103,6 +103,7 @@ void loop() {
       forward_position = g_stepper_controller.GetCurrentPosition();
       g_stepper_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
       homing_phase = HomingPhase::kBackward;
+      Serial.println("Forward done");
     }
     break;
    case HomingPhase::kBackward:
@@ -164,11 +165,11 @@ void loop() {
   }
   */
 
-  // Run the control loop at approx 1000 Hz.
+  // Run the control loop at approx 200 Hz.
   // This is only for velocity updates. Stepping happens asynchronously.
   // We put the delay inserter here because this is the most crucial part
   // for loop timing.
-  static DelayInserter<1000> delay_inserter;
+  static DelayInserter<5000> delay_inserter;
   delay_inserter.Sync();
   g_stepper_controller.Update();
 }
