@@ -48,7 +48,8 @@
 **
 ****************************************************************************/
 
-import QtQuick 2.5
+import QtQuick 6.0
+import QtQuick.Controls 6.0
 
 GamePage {
     id: controlPage
@@ -91,24 +92,118 @@ GamePage {
         width: parent.width - GameSettings.fieldMargin*2
         color: GameSettings.viewColor
 
+        ControlSlider {
+            id: rangeSlider
+            anchors.top: parent.top
+            is_range: true
+            text: qsTr("Range")
+        }
+
+        ControlSlider {
+            id: speedSlider
+            anchors.top: rangeSlider.bottom
+            anchors.topMargin: GameSettings.fieldMargin
+            is_range: false
+            text: qsTr("Speed")
+        }
+
         Text {
-            id: positionText
+            id: patternsText
+            anchors.top: speedSlider.bottom
+            anchors.topMargin: GameSettings.fieldMargin
             width: parent.width
             height: GameSettings.fieldHeight
             horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            verticalAlignment: Text.AlignBottom
             color: GameSettings.textColor
             font.pixelSize: GameSettings.mediumFontSize
-            text: qsTr("Position")
+            text: qsTr("Pattern")
         }
 
-        BottomLine {
-            anchors.top: positionText.bottom
-            anchors.bottom: undefined
-            height: 1;
-            width: parent.width
-            color: "#898989"
+        GridView {
+            id: patterns
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: patternsText.bottom
+            anchors.topMargin: parent.width * 0.03
+            width: parent.width * 0.8
+            height: cellHeight * 2
+            cellWidth: width / 4
+            cellHeight: cellWidth
+
+            property var modes: ["sine", "triangle", "square", "sawtooth"]
+            property int selectedIndex: 0
+
+            model: modes
+            delegate: Item {
+                width: patterns.cellWidth
+                height: patterns.cellHeight
+
+                Rectangle {
+                    id: rect
+                    anchors.centerIn: parent
+                    color: index == patterns.selectedIndex ? GameSettings.buttonPressedColor : GameSettings.backgroundColor
+                    width: patterns.cellWidth * 0.85
+                    height: width
+                }
+
+                Image {
+                    source: "images/patterns/" + patterns.modes[index] + ".png"
+                    anchors.fill: rect
+                }
+
+                MouseArea {
+                    id: mouseArea
+                    anchors.fill: rect
+                    onClicked: {
+                        patterns.selectedIndex = index
+                    }
+                }
+            }
         }
+/*
+            delegate: Rectangle {
+                id: box
+                height:GameSettings.fieldHeight * 1.2
+                width: devices.width
+                color: baseColor
+
+                property color baseColor: index % 2 === 0 ? GameSettings.delegate1Color : GameSettings.delegate2Color
+                property color pressedColor: GameSettings.buttonPressedColor
+
+                MouseArea {
+                    id: mouseArea
+                    anchors.fill: parent
+                    onPressed: box.color = pressedColor
+                    onReleased: box.color = baseColor
+                    onClicked: {
+                        deviceFinder.connectToService(modelData.deviceAddress);
+                        app.showPage(app.controlPageIndex)
+                    }
+                }
+
+                Text {
+                    id: device
+                    font.pixelSize: GameSettings.smallFontSize
+                    text: modelData.deviceName
+                    anchors.top: parent.top
+                    anchors.topMargin: parent.height * 0.1
+                    anchors.leftMargin: parent.height * 0.1
+                    anchors.left: parent.left
+                    color: GameSettings.textColor
+                }
+
+                Text {
+                    id: deviceAddress
+                    font.pixelSize: GameSettings.smallFontSize
+                    text: modelData.deviceAddress
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: parent.height * 0.1
+                    anchors.rightMargin: parent.height * 0.1
+                    anchors.right: parent.right
+                    color: Qt.darker(GameSettings.textColor)
+                }
+            }
+            */
     }
 
     GameButton {

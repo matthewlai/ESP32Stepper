@@ -3,5 +3,9 @@
         <file>qml/images/logo.png</file>
         <file>qml/images/bt_off_to_on.png</file>
         <file>qml/images/woodpecker_1024.png</file>
+        <file>qml/images/patterns/sawtooth.png</file>
+        <file>qml/images/patterns/sine.png</file>
+        <file>qml/images/patterns/square.png</file>
+        <file>qml/images/patterns/triangle.png</file>
     </qresource>
 </RCC>

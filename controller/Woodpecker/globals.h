@@ -54,4 +54,6 @@
 const static char* kServiceUuid = "30218d2c-b180-4651-aa2c-6ab3f320044e";
 const static char* kStartStopCharUuid = "bf95e3b2-4ffe-485a-acd9-e54afc8a5e0c";
 
+//#define BLUETOOTH_DEBUG // Extra BLE debug output
+
 #endif // GLOBALS_H

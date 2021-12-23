@@ -59,7 +59,9 @@
 
 int main(int argc, char *argv[])
 {
+#ifdef BLUETOOTH_DEBUG
     QLoggingCategory::setFilterRules(QStringLiteral("qt.bluetooth* = true"));
+#endif
     QGuiApplication app(argc, argv);
 
     ConnectionHandler connectionHandler;
