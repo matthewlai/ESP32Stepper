@@ -49,6 +49,7 @@
 ****************************************************************************/
 
 #include <QGuiApplication>
+#include <QIcon>
 #include <QLoggingCategory>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -63,6 +64,8 @@ int main(int argc, char *argv[])
     QLoggingCategory::setFilterRules(QStringLiteral("qt.bluetooth* = true"));
 #endif
     QGuiApplication app(argc, argv);
+
+    app.setWindowIcon(QIcon(":/qml/images/logo.png"));
 
     ConnectionHandler connectionHandler;
     DeviceHandler deviceHandler;
