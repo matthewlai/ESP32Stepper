@@ -1,6 +1,16 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// Board config ---------------------------------------------------------------
+
+// First revision boards have TMC2590
+#define TMC2590
+
+// Second revision boards have TMC2160(A)
+//#define TMC2160
+
+// ----------------------------------------------------------------------------
+
 // Stepper config -------------------------------------------------------------
 // Motor current limit in Amps(rms). Maximum supported by this board is 4.6A.
 constexpr float kMotorCurrentLimit = 1.6f;
@@ -14,7 +24,7 @@ constexpr int kFullStepsPerRev = 200;
 constexpr float kMaxSpeed = 800;
 
 // Maximum acceleration in Revs/s^2.
-constexpr float kMaxAcceleration = 700.0f;
+constexpr float kMaxAcceleration = 500.0f;
 
 // Maximum jerk in Rev/s^3
 constexpr float kMaxJerk = 100000.0f;
@@ -34,6 +44,18 @@ constexpr int8_t kStallGuardThreshold[2] = { 4, 0 };
 
 // StallGuard doesn't work at very low velocities due to weak back-emf.
 constexpr float kStallGuardMinSpeed = 60.0f;
+
+// ----------------------------------------------------------------------------
+
+// Motion planning config -----------------------------------------------------
+
+// Position controller will consider target reached when we get this close to
+// target position as a fraction of total range.
+constexpr float kPositionTolerance = 0.01f;
+
+// Velocities below this are ignored by the driver (assumed to be rounding
+// errors).
+constexpr float kMinVelocity = 0.0001f;
 
 // ----------------------------------------------------------------------------
 

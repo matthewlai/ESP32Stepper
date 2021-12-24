@@ -20,7 +20,7 @@ constexpr int kLedData = 21;
 // Globals --------------------------------------------------------
 Adafruit_NeoPixel g_rgb_led(/*count=*/1, kLedData);
 
-TMC2590Controller g_stepper_controller;
+MotionController g_motion_controller;
 // ----------------------------------------------------------------
 
 void SetRGBLedColour(float r, float g, float b) {
@@ -49,7 +49,7 @@ void setup() {
 
   Serial.println("Setting up");
 
-  g_stepper_controller.Begin();
+  g_motion_controller.Begin();
 }
 
 enum class HomingPhase {
@@ -78,7 +78,7 @@ void loop() {
   bool run_setting = ble_server.Started();
 
   if (last_run_setting != run_setting) {
-    Serial.print("Start is now: ");
+    Serial.print("Started=");
     Serial.println(run_setting);
     last_run_setting = run_setting;
   }
@@ -90,34 +90,34 @@ void loop() {
   switch (homing_phase) {
    case HomingPhase::kStart:
     // Disable stallguard filtering for faster response.
-    g_stepper_controller.SetStallGuardFiltering(false);
-    g_stepper_controller.SetAccelerationLimit(kHomingAcceleration);
-    g_stepper_controller.SetJerkLimit(kHomingMaxJerk);
-    g_stepper_controller.SetMotorCurrent(kHomingCurrent);
+    g_motion_controller.Driver()->SetStallGuardFiltering(false);
+    g_motion_controller.SetAccelerationLimit(kHomingAcceleration);
+    g_motion_controller.SetJerkLimit(kHomingMaxJerk);
+    g_motion_controller.Driver()->SetMotorCurrent(kHomingCurrent);
     homing_phase = HomingPhase::kForward;
     break;
    case HomingPhase::kForward:
-    g_stepper_controller.SetTargetSpeedRPM(kHomingSpeedRPM);
-    if ((g_stepper_controller.GetCurrentSpeedRPM() > (kHomingSpeedRPM * 0.99f)) &&
-        g_stepper_controller.IsStalled()) {
-      forward_position = g_stepper_controller.GetCurrentPosition();
-      g_stepper_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
+    g_motion_controller.SetTargetSpeedRPM(kHomingSpeedRPM);
+    if ((g_motion_controller.GetCurrentSpeedRPM() > (kHomingSpeedRPM * 0.99f)) &&
+        g_motion_controller.Driver()->IsStalled()) {
+      forward_position = g_motion_controller.GetCurrentPosition();
+      g_motion_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
       homing_phase = HomingPhase::kBackward;
       Serial.println("Forward done");
     }
     break;
    case HomingPhase::kBackward:
-   g_stepper_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
-    if ((g_stepper_controller.GetCurrentSpeedRPM() < -(kHomingSpeedRPM * 0.99f)) &&
-        g_stepper_controller.IsStalled()) {
-      backward_position = g_stepper_controller.GetCurrentPosition();
+   g_motion_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
+    if ((g_motion_controller.GetCurrentSpeedRPM() < -(kHomingSpeedRPM * 0.99f)) &&
+        g_motion_controller.Driver()->IsStalled()) {
+      backward_position = g_motion_controller.GetCurrentPosition();
       range = forward_position - backward_position;
-      g_stepper_controller.SetTargetSpeedRPM(0.0f);
-      g_stepper_controller.SetCurrentPosition(0);
-      g_stepper_controller.SetStallGuardFiltering(true);
-      g_stepper_controller.SetAccelerationLimit(kMaxAcceleration);
-      g_stepper_controller.SetJerkLimit(kMaxJerk);
-      g_stepper_controller.SetMotorCurrent(kMotorCurrentLimit);
+      g_motion_controller.SetTargetSpeedRPM(0.0f);
+      g_motion_controller.SetCurrentPosition(0);
+      g_motion_controller.Driver()->SetStallGuardFiltering(true);
+      g_motion_controller.SetAccelerationLimit(kMaxAcceleration);
+      g_motion_controller.SetJerkLimit(kMaxJerk);
+      g_motion_controller.Driver()->SetMotorCurrent(kMotorCurrentLimit);
       homing_phase = HomingPhase::kDone;
       Serial.println("Homing Done!");
       Serial.print("Forward Position: ");
@@ -131,39 +131,13 @@ void loop() {
   }
 
   if (homing_phase == HomingPhase::kDone) {
-    g_stepper_controller.SetTargetSpeed(0.0f);
-
     int32_t target = range * 0.5f;
-    if (g_stepper_controller.GetCurrentPosition() < (target + range * 0.01f) && g_stepper_controller.GetCurrentPosition() > (target - range * 0.01f)) {
-      g_stepper_controller.SetTargetSpeed(0.0f);
+    if (fabs(g_motion_controller.GetCurrentPosition() - target) > kPositionTolerance * range) {
+      g_motion_controller.UpdateTargetSpeedByPosition(target, kMaxSpeed);
     } else {
-      g_stepper_controller.UpdateTargetSpeedByPosition(target, kMaxSpeed);
+      g_motion_controller.SetTargetSpeed(0.0f);
     }
   }
-
-  /*
-  if (homing_phase == HomingPhase::kDone) {
-    // Once the homing is done, the valid range is (0, range).
-  
-    static int32_t low_position_target = 3.5f * range / 8;
-    static int32_t high_position_target = 4.5f * range / 8;
-
-    static int32_t low_position_threshold = 3.6f * range / 8;
-    static int32_t high_position_threshold = 4.4f * range / 8;
-
-    static int32_t current_target = low_position_target;
-
-    int32_t current_position = g_stepper_controller.GetCurrentPosition();
-
-    if (current_position > high_position_threshold) {
-      current_target = low_position_target;
-    } else if (current_position < low_position_threshold) {
-      current_target = high_position_target;
-    }
-
-     g_stepper_controller.UpdateTargetSpeedByPosition(current_target, kMaxSpeed);
-  }
-  */
 
   // Run the control loop at approx 200 Hz.
   // This is only for velocity updates. Stepping happens asynchronously.
@@ -171,5 +145,5 @@ void loop() {
   // for loop timing.
   static DelayInserter<5000> delay_inserter;
   delay_inserter.Sync();
-  g_stepper_controller.Update();
+  g_motion_controller.Update();
 }
