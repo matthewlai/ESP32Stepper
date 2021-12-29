@@ -13,6 +13,7 @@
 
 // Stepper config -------------------------------------------------------------
 // Motor current limit in Amps(rms). Maximum supported by this board is 4.6A.
+// The driver will never exceed this limit.
 constexpr float kMotorCurrentLimit = 1.6f;
 
 // Flip all directions.
@@ -40,7 +41,7 @@ constexpr float kHomingMaxJerk = 1000000.0f;
 // StallGuard 2 sensitivity setting. See 5. StallGuard2 Load Measurement in
 // the datasheet. Higher values = less sensitive. (63 to -64).
 // Value per direcion [forward, backward].
-constexpr int8_t kStallGuardThreshold[2] = { 4, 0 };
+constexpr int8_t kStallGuardThreshold[2] = { 3, 0 };
 
 // StallGuard doesn't work at very low velocities due to weak back-emf.
 constexpr float kStallGuardMinSpeed = 60.0f;
@@ -52,6 +53,9 @@ constexpr float kStallGuardMinSpeed = 60.0f;
 // Position controller will consider target reached when we get this close to
 // target position as a fraction of total range.
 constexpr float kPositionTolerance = 0.01f;
+
+// Speed in RPM below which we consider the motor stopped.
+constexpr byte kSpeedEpsilon = 0.01f;
 
 // Velocities below this are ignored by the driver (assumed to be rounding
 // errors).

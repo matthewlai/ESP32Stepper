@@ -48,9 +48,6 @@ constexpr float kMotorCurrentLimitMax = 4.6f;
 constexpr byte kMicrostepsSetting = 0x6;
 constexpr byte kMicrostepsPerFullStep = 4;
 
-// Speed in RPM below which we consider the motor stopped.
-constexpr byte kSpeedEpsilon = 0.01f;
-
 constexpr float kRevsPerMicroStep = 1.0f / (kFullStepsPerRev * kMicrostepsPerFullStep);
 // ----------------------------------------------------------------
 

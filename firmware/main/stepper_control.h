@@ -3,8 +3,12 @@
 
 #include <cstring>
 
-#ifdef TMC2590
+#if defined(TMC2590)
 #include "tmc2590.h"
+#elif defined(TMC2160)
+#include "tmc2160.h"
+#else
+#error "No driver selected"
 #endif
 
 // Stepper ISR ----------------------------------------------------
@@ -93,8 +97,12 @@ MotionController::MotionController()
     jerk_limit_(kMaxJerk),
     last_update_time_us_(0),
     step_timer_(nullptr) {
-#ifdef TMC2590
+#if defined(TMC2590)
   driver_ = new TMC2590Driver;
+#elif defined(TMC2160)
+  driver_ = new TMC2160Driver;
+#else
+#error "No driver selected"
 #endif
 }
 

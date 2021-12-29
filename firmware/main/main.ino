@@ -8,6 +8,7 @@
 #include "ble.h"
 #include "config.h"
 #include "delay_inserter.h"
+#include "homing_controller.h"
 #include "stepper_control.h"
 
 // Pin definitions ------------------------------------------------
@@ -21,6 +22,19 @@ constexpr int kLedData = 21;
 Adafruit_NeoPixel g_rgb_led(/*count=*/1, kLedData);
 
 MotionController g_motion_controller;
+// ----------------------------------------------------------------
+
+// Example Motion Update Commands ---------------------------------
+
+void MoveToMiddle(MotionController* motion_controller, int32_t range) {
+  int32_t target = range * 0.5f;
+  if (fabs(motion_controller->GetCurrentPosition() - target) > kPositionTolerance * range) {
+    motion_controller->UpdateTargetSpeedByPosition(target, kMaxSpeed);
+  } else {
+    motion_controller->SetTargetSpeed(0.0f);
+  }
+}
+
 // ----------------------------------------------------------------
 
 void SetRGBLedColour(float r, float g, float b) {
@@ -52,13 +66,6 @@ void setup() {
   g_motion_controller.Begin();
 }
 
-enum class HomingPhase {
-  kStart,
-  kForward,
-  kBackward,
-  kDone
-};
-
 void loop() {
   auto t = millis();
 
@@ -69,8 +76,6 @@ void loop() {
   float g = sin(kCoeff * t + (0.33f * 2.0f * M_PI)) * 0.5f + 0.5f;
   float b = sin(kCoeff * t + (0.66f * 2.0f * M_PI)) * 0.5f + 0.5f;
   SetRGBLedColour(kBrightness * r, kBrightness * g, kBrightness * b);
-
-  static HomingPhase homing_phase = HomingPhase::kStart;
 
   static WoodpeckerBLEServer ble_server;
 
@@ -83,60 +88,12 @@ void loop() {
     last_run_setting = run_setting;
   }
 
-  static int32_t forward_position = 0;
-  static int32_t backward_position = 0;
-  static int32_t range = 0;
+  static HomingController homing_controller(&g_motion_controller);
 
-  switch (homing_phase) {
-   case HomingPhase::kStart:
-    // Disable stallguard filtering for faster response.
-    g_motion_controller.Driver()->SetStallGuardFiltering(false);
-    g_motion_controller.SetAccelerationLimit(kHomingAcceleration);
-    g_motion_controller.SetJerkLimit(kHomingMaxJerk);
-    g_motion_controller.Driver()->SetMotorCurrent(kHomingCurrent);
-    homing_phase = HomingPhase::kForward;
-    break;
-   case HomingPhase::kForward:
-    g_motion_controller.SetTargetSpeedRPM(kHomingSpeedRPM);
-    if ((g_motion_controller.GetCurrentSpeedRPM() > (kHomingSpeedRPM * 0.99f)) &&
-        g_motion_controller.Driver()->IsStalled()) {
-      forward_position = g_motion_controller.GetCurrentPosition();
-      g_motion_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
-      homing_phase = HomingPhase::kBackward;
-      Serial.println("Forward done");
-    }
-    break;
-   case HomingPhase::kBackward:
-   g_motion_controller.SetTargetSpeedRPM(-kHomingSpeedRPM);
-    if ((g_motion_controller.GetCurrentSpeedRPM() < -(kHomingSpeedRPM * 0.99f)) &&
-        g_motion_controller.Driver()->IsStalled()) {
-      backward_position = g_motion_controller.GetCurrentPosition();
-      range = forward_position - backward_position;
-      g_motion_controller.SetTargetSpeedRPM(0.0f);
-      g_motion_controller.SetCurrentPosition(0);
-      g_motion_controller.Driver()->SetStallGuardFiltering(true);
-      g_motion_controller.SetAccelerationLimit(kMaxAcceleration);
-      g_motion_controller.SetJerkLimit(kMaxJerk);
-      g_motion_controller.Driver()->SetMotorCurrent(kMotorCurrentLimit);
-      homing_phase = HomingPhase::kDone;
-      Serial.println("Homing Done!");
-      Serial.print("Forward Position: ");
-      Serial.println(forward_position);
-      Serial.print("Backward Position: ");
-      Serial.println(backward_position);
-    }
-    break;
-   case HomingPhase::kDone:
-    break;
-  }
-
-  if (homing_phase == HomingPhase::kDone) {
-    int32_t target = range * 0.5f;
-    if (fabs(g_motion_controller.GetCurrentPosition() - target) > kPositionTolerance * range) {
-      g_motion_controller.UpdateTargetSpeedByPosition(target, kMaxSpeed);
-    } else {
-      g_motion_controller.SetTargetSpeed(0.0f);
-    }
+  if (homing_controller.Done()) {
+    MoveToMiddle(&g_motion_controller, homing_controller.Range());
+  } else {
+    homing_controller.Update();
   }
 
   // Run the control loop at approx 200 Hz.
