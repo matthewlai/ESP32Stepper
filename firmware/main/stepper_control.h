@@ -32,10 +32,10 @@ volatile bool g_current_edge = false;
 portMUX_TYPE g_stepper_timer_mux = portMUX_INITIALIZER_UNLOCKED;
 
 void IRAM_ATTR StepperTimerHandler(void) {
+  portENTER_CRITICAL_ISR(&g_stepper_timer_mux);
   digitalWrite(kTmcStep, g_current_edge);
   g_current_edge = !g_current_edge;
 
-  portENTER_CRITICAL_ISR(&g_stepper_timer_mux);
   g_current_position += g_current_dir_sign;
   portEXIT_CRITICAL_ISR(&g_stepper_timer_mux);
 }
@@ -107,7 +107,9 @@ MotionController::MotionController()
 }
 
 void MotionController::Begin() {
-  driver_->Begin();
+  driver_->Begin();  
+  step_timer_ = timerBegin(3, 80 /* APB_CLK / 80 = 1MHz*/, /*countUp=*/true);
+  timerAttachInterrupt(step_timer_, &StepperTimerHandler, 1);
 }
 
 void MotionController::SetTargetSpeed(float speed_rps) {
@@ -155,6 +157,13 @@ void MotionController::UpdateTargetSpeedByPosition(
 
 void MotionController::Update() {
   uint32_t time_now = micros();
+
+  // Skip first call so we don't get a huge step on first update.
+  if (last_update_time_us_ == 0) {
+    last_update_time_us_ = time_now;
+    return;
+  }
+  
   float time_delta = (time_now - last_update_time_us_) / 1000000.0f;
   float reciprocal_time_delta = 1.0f / time_delta;
   last_update_time_us_ = time_now;
@@ -205,11 +214,19 @@ void MotionController::Update() {
     Serial.println(driver_->ReadStallGuardValue());
   }
 
+  static uint32_t last_debug_print_time = 0;
+  if ((time_now - last_debug_print_time) > 1000000) {
+    driver_->PrintDebugInfo();
+    last_debug_print_time = time_now;
+  }
+
   current_speed_ = new_speed;
 
   uint32_t delay_us = 1000000.0f / (max(fabs(current_speed_), 0.000001f) * kFullStepsPerRev * kMicrostepsPerFullStep);
 
   driver_->SetStallGuardThreshold(kStallGuardThreshold[(current_speed_ > 0 ? 0 : 1)]);
+
+  timerAlarmWrite(step_timer_, delay_us, /*autoreload=*/true);
   
   portENTER_CRITICAL_ISR(&g_stepper_timer_mux);
   if (current_speed_ > 0) {
@@ -219,21 +236,13 @@ void MotionController::Update() {
     g_current_dir_sign = -1;
     digitalWrite(kTmcDir, kFlipDrivingDirection ? HIGH : LOW);
   }
-  
-  if (!step_timer_) {
-    step_timer_ = timerBegin(3, 80 /* APB_CLK / 80 = 1MHz*/, /*countUp=*/true);
-    timerAttachInterrupt(step_timer_, &StepperTimerHandler, 1);
-  }
-
-  timerAlarmWrite(step_timer_, delay_us, /*autoreload=*/true);
+  portEXIT_CRITICAL_ISR(&g_stepper_timer_mux);
 
   if (fabs(current_speed_) > kMinVelocity) {
     timerAlarmEnable(step_timer_);
   } else {
     timerAlarmDisable(step_timer_);
   }
-
-  portEXIT_CRITICAL_ISR(&g_stepper_timer_mux);
 }
 
 int32_t MotionController::GetCurrentPosition() {
