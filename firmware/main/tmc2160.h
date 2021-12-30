@@ -6,6 +6,8 @@
 #include "float_utils.h"
 #include "tmc_driver.h"
 
+#include <type_traits>
+
 // Pin definitions ------------------------------------------------
 // Drive low to enable motor drivers
 constexpr int kTmcEn = 4;
@@ -18,7 +20,7 @@ constexpr int kTmcDiag0 = 15;
 constexpr int kTmcDiag1 = 13;
 
 constexpr int kTmcDco = 16;
-constexpr int kTmcDcen = 17;
+constexpr int kTmcDcEn = 17;
 // ----------------------------------------------------------------
 
 // Other Constants ------------------------------------------------
@@ -59,7 +61,12 @@ constexpr float kRevsPerMicroStep = 1.0f / (kFullStepsPerRev * kMicrostepsPerFul
 // ----------------------------------------------------------------
 
 // Registers and Fields -------------------------------------------
-template <uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen> struct RegField {};
+struct RegFieldBase {};
+template <uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen> struct RegField {
+  constexpr static uint8_t Addr() { return kAddr; }
+  constexpr static uint8_t BitStart() { return kBitStart; }
+  constexpr static uint8_t BitLen() { return kBitLen; }
+};
 
 constexpr uint8_t kGCONF = 0x00;
 constexpr uint8_t kGLOBALSCALER = 0x0b;
@@ -67,6 +74,27 @@ constexpr uint8_t kIHOLD_IRUN = 0x10;
 constexpr uint8_t kTPOWERDOWN = 0x11;
 constexpr uint8_t kTPWMTHRS = 0x13;
 constexpr uint8_t kCHOPCONF = 0x6c;
+constexpr uint8_t kCOOLCONF = 0x6d;
+constexpr uint8_t kDRV_STATUS = 0x6f;
+
+using kIHOLD = RegField<kIHOLD_IRUN, 0, 5>;
+using kIRUN = RegField<kIHOLD_IRUN, 8, 5>;
+using kIHOLDDELAY = RegField<kIHOLD_IRUN, 16, 4>;
+
+using kDEDGE = RegField<kCHOPCONF, 29, 1>; // Step on both edges.
+using kINTPOL = RegField<kCHOPCONF, 28, 1>; // MicroPlyer interpolation.
+using kMRES = RegField<kCHOPCONF, 24, 4>; // Microstep resolution.
+
+using kSFILT = RegField<kCOOLCONF, 24, 1>; // SG2 filter enable.
+using kSGT = RegField<kCOOLCONF, 16, 7>; // SG2 threshold.
+
+using kStandStillIndicator = RegField<kDRV_STATUS, 31, 1>;
+using kOvertempPreWarning = RegField<kDRV_STATUS, 26, 1>;
+using kOverTemp = RegField<kDRV_STATUS, 25, 1>;
+using kCSActual = RegField<kDRV_STATUS, 16, 5>;
+using kFullStepActive = RegField<kDRV_STATUS, 15, 1>;
+using kStealth = RegField<kDRV_STATUS, 14, 1>;
+using kSGResult = RegField<kDRV_STATUS, 0, 10>;
 // ----------------------------------------------------------------
 
 class TMC2160Driver : public TMCDriver {
@@ -83,6 +111,8 @@ class TMC2160Driver : public TMCDriver {
 
   int StepsPerRev() override { return kMicrostepsPerFullStep * kFullStepsPerRev; }
 
+  void PrintDebugInfo() override;
+
  private:
   // This sets the max motor current to kMotorCurrentLimit using GLOBALSCALER.
   // We prefer using GLOBALSCALER as much as possible (instead of CS) because
@@ -98,15 +128,8 @@ class TMC2160Driver : public TMCDriver {
   template <uint8_t kAddr>
   uint32_t ReadReg();
 
-  template <uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen>
-  void WriteRegPart(uint32_t x);
-  template <RegField<uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen> kField>>
-  void WriteRegPart(uint32_t x) { WriteRegPart<kAddr, kBitStart, kBitLen>(x); }
-
-  template <uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen>
+  template <typename Field>
   uint32_t ReadRegPart();
-  template <RegField<uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen> kField>>
-  uint32_t ReadRegPart(uint32_t x) { return ReadRegPart<kAddr, kBitStart, kBitLen>(); }
 
   // TMC2160 is on the VSPI bus default pins.
   SPIClass* tmc_spi_;
@@ -121,12 +144,41 @@ class TMC2160Driver : public TMCDriver {
   // to compute CS to set to achieve the requested current as a ratio of the actual
   // scaled current.
   float scaled_max_current_;
+
+  // These are caches for write-only registers.
+  uint32_t coolconf_;
 };
 
+namespace {
+
+constexpr uint32_t ComputeMask(uint8_t bit_start, uint8_t bit_len) {
+  return (bit_len >= 32 ? 0xffffffff : ((1UL << bit_len) - 1)) << bit_start;
+}
+
+// Write a field to val (Field addr ignored).
+template <typename Field>
+uint32_t WriteField(uint32_t old_val, uint32_t new_val) {
+  static_assert((uint32_t(Field::BitStart()) + Field::BitLen()) <= 32, "Field >32 wide?");
+  uint32_t mask = ComputeMask(Field::BitStart(), Field::BitLen());
+  return (old_val & ~mask) | ((new_val << Field::BitStart()) & mask);
+}
+
+// Extract a field from val (Field addr ignored).
+template <typename Field>
+uint32_t ExtractPart(uint32_t val) {
+  static_assert((uint32_t(Field::BitStart()) + Field::BitLen()) <= 32, "Field >32 wide?");
+  uint32_t mask = ComputeMask(Field::BitStart(), Field::BitLen());
+  return (val & mask) >> Field::BitStart();
+}
+
+}
+
 TMC2160Driver::TMC2160Driver()
-  : tmc_spi_(nullptr), spi_status_(0) {}
+  : tmc_spi_(nullptr), spi_status_(0), coolconf_(0) {}
 
 void TMC2160Driver::Begin() {
+  Serial.println("TMC2160 init");
+  
   // Disable all motors.
   pinMode(kTmcEn, OUTPUT);
   digitalWrite(kTmcEn, HIGH);
@@ -148,34 +200,81 @@ void TMC2160Driver::Begin() {
   
   // This is based on the example initialisation sequence given in
   // 19.1 Initialization Examples
-  WriteReg<kCHOPCONF>(0x000100c3);
+
+  uint32_t chopconf = 0x000100c3;
+  chopconf = WriteField<kDEDGE>(chopconf, 1);
+  chopconf = WriteField<kINTPOL>(chopconf, 1);
+  chopconf = WriteField<kMRES>(chopconf, kMicrostepsSetting);
+
+  WriteReg<kCHOPCONF>(chopconf);
   WriteReg<kIHOLD_IRUN>(0x00061f0a);
   WriteReg<kTPOWERDOWN>(0x0000000a);
   WriteReg<kGCONF>(0x00000004);
   WriteReg<kTPWMTHRS>(0x000001f4);
 
-  SetMotorCurrent(kMotorCurrentLimit);
+  // Sanity check to make sure SPI is working. Unlike most other
+  // registers, CHOPCONF is RW.
+  for (;;) {
+    uint32_t read_value = ReadReg<kCHOPCONF>();
+    if (read_value == chopconf) {
+      break;
+    } else {
+      Serial.printf("Unexpected CHOPCONF readback: %u\n", read_value);
+      WriteReg<kCHOPCONF>(chopconf);
+    }
+    delay(1000);
+  }
+
+  SetMaxMotorCurrent();
 
   // Enable motor drivers.
   digitalWrite(kTmcEn, LOW);
+
+  Serial.println("TMC2160 init done");
 }
 
 uint32_t TMC2160Driver::ReadStallGuardValue() {
-  // TODO
-  return 0;
+  return ReadRegPart<kSGResult>();
 }
 
 void TMC2160Driver::SetStallGuardFiltering(bool filter_on) {
-  // TODO
+  coolconf_ = WriteField<kSFILT>(coolconf_, filter_on ? 1 : 0);
+  WriteReg<kCOOLCONF>(coolconf_);
 }
 
 void TMC2160Driver::SetStallGuardThreshold(int8_t threshold) {
-  // TODO
+  // Convert 8-bit two's complement to 7-bit by dropping the high bit
+  uint8_t sgt_uint;
+  std::memcpy(&sgt_uint, &threshold, 1);  
+  coolconf_ = WriteField<kSGT>(coolconf_, sgt_uint & 0x7f);
+  WriteReg<kCOOLCONF>(coolconf_);
 }
 
 void TMC2160Driver::SetMotorCurrent(float new_current_setting) {
-  // RMS current = GLOBALSCALER / 256 * (CS + 1) / 32 * Vfs / Rsense * 1 / sqrt(2)
+  float current_ratio = new_current_setting / scaled_max_current_;
+  uint32_t clamped_scaler = RoundWithClamping(current_ratio * 32.0f, 1, 32);
   
+  Serial.printf("IHOLD_IRUN before: %u\n", ReadReg<kIHOLD_IRUN>());
+  uint32_t new_val = 0;
+  new_val = WriteField<kIRUN>(new_val, clamped_scaler - 1);
+  new_val = WriteField<kIHOLD>(new_val, clamped_scaler - 1);
+  new_val = WriteField<kIHOLDDELAY>(new_val, 0x7);
+  WriteReg<kIHOLD_IRUN>(new_val);
+}
+
+void TMC2160Driver::PrintDebugInfo() {
+  auto drv_status = ReadReg<kDRV_STATUS>();
+  Serial.println("TMC2160 DRV_STATUS ==============================");
+  Serial.printf("Stand still: %u\n", ExtractPart<kStandStillIndicator>(drv_status));
+  Serial.printf("Overtemp pre-warning: %u\n", ExtractPart<kOvertempPreWarning>(drv_status));
+  Serial.printf("Overtemp: %u\n", ExtractPart<kOverTemp>(drv_status));
+
+  uint32_t cs_actual = ExtractPart<kCSActual>(drv_status);
+  Serial.printf("CSActual (drv current / 32): %u (%fA)\n", cs_actual, scaled_max_current_ * (cs_actual + 1) / 32.0f);
+  Serial.printf("Full step active: %u\n", ExtractPart<kFullStepActive>(drv_status));
+  Serial.printf("StealthChop: %u\n", ExtractPart<kStealth>(drv_status));
+  Serial.printf("StallGuard: %u\n", ExtractPart<kSGResult>(drv_status));
+  Serial.println("=================================================");
 }
 
 void TMC2160Driver::SetMaxMotorCurrent() {
@@ -185,13 +284,16 @@ void TMC2160Driver::SetMaxMotorCurrent() {
 
   // Minimum allowed value is 32.
   uint32_t clamped_scaler = RoundWithClamping(scaler_f, 32, 256);
-  WriteReg<kGLOBALSCALER>((clamped_scaler == 256) ? 0, clamped_scaler);
+  WriteReg<kGLOBALSCALER>((clamped_scaler == 256) ? 0 : clamped_scaler);
 
   scaled_max_current_ = float(clamped_scaler) / 256.0f * full_scale_current_limit;
 
   Serial.printf("Requested max current: %f\n", kMotorCurrentLimit);
   Serial.printf("GLOBALSCALER set to: %u\n", clamped_scaler);
   Serial.printf("Actual max current: %f\n", scaled_max_current_);
+
+  // Apply the remaining correction using CS.
+  SetMotorCurrent(kMotorCurrentLimit);
 }
 
 // TMC2160 requires 40-bit transactions (8-bit addr + 32-bit value), and return 20-bit status.
@@ -206,7 +308,7 @@ void TMC2160Driver::WriteReg(uint32_t x) {
 }
 
 template <uint8_t kAddr>
-uint32_t TMC2160Driver::ReadReg(uint8_t addr) {
+uint32_t TMC2160Driver::ReadReg() {
   // For reads the register value is returned 1 transaction later, so we have to do 2
   // transactions. If higher bus efficiency is necessary we can pipeline transactions
   // to avoid having to do this, but for now let's keep it simple.
@@ -222,30 +324,13 @@ uint32_t TMC2160Driver::ReadReg(uint8_t addr) {
   return ret;
 }
 
-namespace {  
-constexpr uint32_t ComputeMask(uint8_t bit_start, uint8_t bit_len) {
-  return (bit_len >= 32 ? 0xffffffff : ((1UL << bit_len) - 1)) << bit_start;
-}
-}
-
-template <uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen>
-void TMC2160Driver::WriteRegPart(uint32_t x) {
-  static_assert((uint32_t(kBitStart) + kBitLen) <= 32, "Field >32 wide?");
-  
-  uint32_t new_val = ReadReg<kAddr>();
-  uint32_t mask = ComputeMask(kBitStart, kBitLen);
-  new_val &= ~mask;
-  new_val |= (x << kBitStart) & mask;
-  WriteReg<kAddr>(new_val);
-}
-
-template <uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen>
+template <typename Field>
 uint32_t TMC2160Driver::ReadRegPart() {
-  static_assert((uint32_t(kBitStart) + kBitLen) <= 32, "Field >32 wide?");
+  static_assert((uint32_t(Field::BitStart()) + Field::BitLen()) <= 32, "Field >32 wide?");
   
-  uint32_t val = ReadReg<kAddr>();
-  uint32_t mask = ComputeMask(kBitStart, kBitLen);
-  return (val & mask) >> kBitStart;
+  uint32_t val = ReadReg<Field::Addr()>();
+  uint32_t mask = ComputeMask(Field::BitStart(), Field::BitLen());
+  return (val & mask) >> Field::BitStart();
 }
 
 #endif  // TMC2160

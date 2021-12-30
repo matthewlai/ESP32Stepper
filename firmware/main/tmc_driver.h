@@ -9,6 +9,7 @@ class TMCDriver {
   virtual void SetStallGuardFiltering(bool filter_on) = 0;
   virtual void SetStallGuardThreshold(int8_t threshold) = 0;
   virtual int StepsPerRev() = 0;
+  virtual void PrintDebugInfo() {}
 
   bool IsStalled() { return ReadStallGuardValue() == 0; }
 };
