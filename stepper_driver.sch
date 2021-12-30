@@ -169,8 +169,6 @@ Text Notes 900  4400 0    118  ~ 0
 Auto Reset
 Text Label 7250 1900 0    50   ~ 0
 USB_RX
-Text Label 6700 2100 0    50   ~ 0
-USB_TX
 $Comp
 L Switch:SW_Push SW?
 U 1 1 5F220F1B
@@ -323,9 +321,9 @@ F 3 "" H 4650 1700 50  0001 C CNN
 $EndComp
 Wire Notes Line
 	4150 950  8150 950 
-Text Label 6700 3200 0    60   ~ 0
+Text Label 6700 3200 0    50   ~ 0
 LED_DATA
-Text Label 6700 3400 0    60   ~ 0
+Text Label 6700 3400 0    50   ~ 0
 TMC_MOSI
 $Comp
 L Device:R R25
@@ -381,7 +379,7 @@ Text Label 5200 1800 2    50   ~ 0
 EN
 Wire Wire Line
 	5200 1800 5350 1800
-Text Label 6700 1800 0    60   ~ 0
+Text Label 6700 1800 0    50   ~ 0
 IO0
 Wire Wire Line
 	6700 2100 6550 2100
@@ -409,8 +407,6 @@ Wire Wire Line
 	6550 2300 6700 2300
 Wire Wire Line
 	6550 1900 6950 1900
-Text Label 6700 2300 0    50   ~ 0
-TMC_CS
 Wire Wire Line
 	6550 4100 6700 4100
 Wire Notes Line
@@ -1042,7 +1038,7 @@ F 3 "" H 3200 2600 50  0001 C CNN
 	1    3200 2600
 	1    0    0    -1  
 $EndComp
-Text Label 9200 3800 2    60   ~ 0
+Text Label 9200 3800 2    50   ~ 0
 TMC_~EN
 $Comp
 L power:+5V #PWR0113
@@ -1245,19 +1241,13 @@ F 4 "C441184" H 15050 5900 50  0001 C CNN "LCSC"
 	1    15050 5900
 	1    0    0    -1  
 $EndComp
-Text Label 6700 3100 0    60   ~ 0
-TMC_MISO
-Text Label 6700 3000 0    60   ~ 0
-TMC_CLK
-Text Label 9200 2900 2    60   ~ 0
+Text Label 9200 2900 2    50   ~ 0
 TMC_CS
-Text Label 6700 2200 0    50   ~ 0
-TMC_~EN
-Text Label 9200 3000 2    60   ~ 0
+Text Label 9200 3000 2    50   ~ 0
 TMC_CLK
-Text Label 9200 3100 2    60   ~ 0
+Text Label 9200 3100 2    50   ~ 0
 TMC_MOSI
-Text Label 9200 3200 2    60   ~ 0
+Text Label 9200 3200 2    50   ~ 0
 TMC_MISO
 Text Label 12550 4000 2    50   ~ 0
 HB1
@@ -1367,25 +1357,25 @@ Text Label 14850 5900 2    50   ~ 0
 BMA1
 Text Label 14850 5800 2    50   ~ 0
 BMA2
-Text Label 6700 3700 0    60   ~ 0
+Text Label 6700 3700 0    50   ~ 0
 IO27
-Text Label 9200 4400 2    60   ~ 0
+Text Label 9200 4400 2    50   ~ 0
 TMC_DIR
 Text Label 6700 3600 0    50   ~ 0
 TMC_DIR
-Text Label 9200 4300 2    60   ~ 0
+Text Label 9200 4300 2    50   ~ 0
 TMC_STEP
 Text Label 6700 3500 0    50   ~ 0
 TMC_STEP
 Text Label 5250 2100 2    50   ~ 0
 I39
-Text Label 6700 4000 0    60   ~ 0
+Text Label 6700 4000 0    50   ~ 0
 I34
-Text Label 6700 4100 0    60   ~ 0
+Text Label 6700 4100 0    50   ~ 0
 I35
-Text Label 6700 3800 0    60   ~ 0
+Text Label 6700 3800 0    50   ~ 0
 IO32
-Text Label 6700 3900 0    60   ~ 0
+Text Label 6700 3900 0    50   ~ 0
 IO33
 Wire Wire Line
 	5250 2000 5350 2000
@@ -1393,8 +1383,6 @@ Wire Wire Line
 	5350 2100 5250 2100
 Wire Wire Line
 	6700 2900 6550 2900
-Text Label 6700 2000 0    60   ~ 0
-IO2
 Wire Wire Line
 	6550 1800 6700 1800
 Wire Notes Line
@@ -2387,12 +2375,8 @@ Text Label 4600 3100 0    50   ~ 0
 VS_SENSE
 Text Label 5250 2000 2    50   ~ 0
 VS_SENSE
-Text Label 6700 2400 0    60   ~ 0
-IO12
 Wire Wire Line
 	6700 2400 6550 2400
-Text Label 6700 2600 0    60   ~ 0
-IO14
 Wire Wire Line
 	6700 2600 6550 2600
 Text Label 5500 8450 0    60   ~ 0
@@ -2825,21 +2809,13 @@ F 4 "C162420" H 15550 3350 50  0001 C CNN "LCSC"
 	1    15550 3350
 	1    0    0    -1  
 $EndComp
-Text Label 9200 4800 2    60   ~ 0
+Text Label 9200 4800 2    50   ~ 0
 TMC_DCEN
-Text Label 9200 5000 2    60   ~ 0
+Text Label 9200 5000 2    50   ~ 0
 TMC_DCO
-Text Label 6700 2900 0    60   ~ 0
-TMC_DCEN
-Text Label 6700 2800 0    60   ~ 0
-TMC_DCO
-Text Label 9200 3400 2    60   ~ 0
+Text Label 9200 3400 2    50   ~ 0
 TMC_DIAG0
-Text Label 9200 3500 2    60   ~ 0
-TMC_DIAG1
-Text Label 6700 2700 0    60   ~ 0
-TMC_DIAG0
-Text Label 6700 2500 0    60   ~ 0
+Text Label 9200 3500 2    50   ~ 0
 TMC_DIAG1
 Wire Notes Line
 	8200 6750 15850 6750
@@ -2855,4 +2831,41 @@ Wire Notes Line
 	9700 8850 11550 8850
 Wire Notes Line
 	9700 9900 11550 9900
+$Comp
+L power:GND #PWR0182
+U 1 1 6277F220
+P 9050 4000
+F 0 "#PWR0182" H 9050 3750 50  0001 C CNN
+F 1 "GND" H 9055 3827 50  0000 C CNN
+F 2 "" H 9050 4000 50  0001 C CNN
+F 3 "" H 9050 4000 50  0001 C CNN
+	1    9050 4000
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	9050 4000 9200 4000
+Text Label 6700 2500 0    50   ~ 0
+TMC_DIAG1
+Text Label 6700 2700 0    50   ~ 0
+TMC_DIAG0
+Text Label 6700 2800 0    50   ~ 0
+TMC_DCO
+Text Label 6700 2900 0    50   ~ 0
+TMC_DCEN
+Text Label 6700 2600 0    50   ~ 0
+IO14
+Text Label 6700 2400 0    50   ~ 0
+IO12
+Text Label 6700 2000 0    50   ~ 0
+IO2
+Text Label 6700 2200 0    50   ~ 0
+TMC_~EN
+Text Label 6700 3000 0    50   ~ 0
+TMC_CLK
+Text Label 6700 3100 0    50   ~ 0
+TMC_MISO
+Text Label 6700 2300 0    50   ~ 0
+TMC_CS
+Text Label 6700 2100 0    50   ~ 0
+USB_TX
 $EndSCHEMATC
