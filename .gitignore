@@ -1,2 +1,5 @@
 controller/Woodpecker/Build/
 controller/Woodpecker/woodpecker.pro.user
+*autosave*
+*.kicad_pcb-bak
+*.sch-bak
