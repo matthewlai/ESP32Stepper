@@ -69,6 +69,7 @@ template <uint8_t kAddr, uint8_t kBitStart, uint8_t kBitLen> struct RegField {
 };
 
 constexpr uint8_t kGCONF = 0x00;
+constexpr uint8_t kDRV_CONF = 0x0a;
 constexpr uint8_t kGLOBALSCALER = 0x0b;
 constexpr uint8_t kIHOLD_IRUN = 0x10;
 constexpr uint8_t kTPOWERDOWN = 0x11;
@@ -76,6 +77,14 @@ constexpr uint8_t kTPWMTHRS = 0x13;
 constexpr uint8_t kCHOPCONF = 0x6c;
 constexpr uint8_t kCOOLCONF = 0x6d;
 constexpr uint8_t kDRV_STATUS = 0x6f;
+
+// Break before make delay. 0=100ns, 16=200ns, 24=375ns.
+using kBBMTIME = RegField<kDRV_CONF, 0, 5>;
+// Break before make in clock cycles (83ns * BBMCLKS).
+// Highest of BBMCLKS and BBMTIME is used.
+using kBBMCLKS = RegField<kDRV_CONF, 8, 4>;
+using kDRVSTRENGTH = RegField<kDRV_CONF, 18, 2>; // Drive strength (0 = weakest, 3 = strongest).
+using kFILT_ISENSE = RegField<kDRV_CONF, 20, 2>; // Filter time constant.
 
 using kIHOLD = RegField<kIHOLD_IRUN, 0, 5>;
 using kIRUN = RegField<kIHOLD_IRUN, 8, 5>;
@@ -102,6 +111,7 @@ class TMC2160Driver : public TMCDriver {
   TMC2160Driver();
 
   void Begin() override;
+  void Stop() override;
 
   uint32_t ReadStallGuardValue() override;
   void SetStallGuardFiltering(bool filter_on) override;
@@ -203,13 +213,20 @@ void TMC2160Driver::Begin() {
 
   uint32_t chopconf = 0x000100c3;
   chopconf = WriteField<kDEDGE>(chopconf, 1);
-  chopconf = WriteField<kINTPOL>(chopconf, 1);
+  chopconf = WriteField<kINTPOL>(chopconf, 0);
   chopconf = WriteField<kMRES>(chopconf, kMicrostepsSetting);
 
+  uint32_t drvconf = 0;
+  drvconf = WriteField<kBBMTIME>(drvconf, 0);
+  drvconf = WriteField<kBBMCLKS>(drvconf, 0);
+  drvconf = WriteField<kDRVSTRENGTH>(drvconf, 0);
+  drvconf = WriteField<kFILT_ISENSE>(drvconf, 1);
+
   WriteReg<kCHOPCONF>(chopconf);
+  WriteReg<kDRV_CONF>(drvconf);
   WriteReg<kIHOLD_IRUN>(0x00061f0a);
   WriteReg<kTPOWERDOWN>(0x0000000a);
-  WriteReg<kGCONF>(0x00000004);
+  WriteReg<kGCONF>(0x00000000);
   WriteReg<kTPWMTHRS>(0x000001f4);
 
   // Sanity check to make sure SPI is working. Unlike most other
@@ -231,6 +248,11 @@ void TMC2160Driver::Begin() {
   digitalWrite(kTmcEn, LOW);
 
   Serial.println("TMC2160 init done");
+}
+
+void TMC2160Driver::Stop() {
+  // Disable motor drivers.
+  digitalWrite(kTmcEn, HIGH);
 }
 
 uint32_t TMC2160Driver::ReadStallGuardValue() {
@@ -265,6 +287,7 @@ void TMC2160Driver::SetMotorCurrent(float new_current_setting) {
 void TMC2160Driver::PrintDebugInfo() {
   auto drv_status = ReadReg<kDRV_STATUS>();
   Serial.println("TMC2160 DRV_STATUS ==============================");
+  Serial.printf("DRV_STATUS: %x\n", drv_status);
   Serial.printf("Stand still: %u\n", ExtractPart<kStandStillIndicator>(drv_status));
   Serial.printf("Overtemp pre-warning: %u\n", ExtractPart<kOvertempPreWarning>(drv_status));
   Serial.printf("Overtemp: %u\n", ExtractPart<kOverTemp>(drv_status));

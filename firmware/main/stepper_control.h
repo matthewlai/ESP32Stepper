@@ -46,6 +46,7 @@ class MotionController {
   MotionController();
 
   void Begin();
+  void Stop();
 
   void SetTargetSpeed(float speed_rps);
   void SetTargetSpeedRPM(float speed_rpm) { SetTargetSpeed(speed_rpm / 60.0f); }
@@ -110,6 +111,13 @@ void MotionController::Begin() {
   driver_->Begin();  
   step_timer_ = timerBegin(3, 80 /* APB_CLK / 80 = 1MHz*/, /*countUp=*/true);
   timerAttachInterrupt(step_timer_, &StepperTimerHandler, 1);
+}
+
+void MotionController::Stop() {
+  if (step_timer_) {
+    timerAlarmDisable(step_timer_);
+  }
+  driver_->Stop();
 }
 
 void MotionController::SetTargetSpeed(float speed_rps) {

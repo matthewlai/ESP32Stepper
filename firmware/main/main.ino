@@ -13,6 +13,7 @@
 
 // Pin definitions ------------------------------------------------
 constexpr int kLedData = 21;
+constexpr int kPairSw = 22;
 // ----------------------------------------------------------------
 
 // Other Constants ------------------------------------------------
@@ -35,6 +36,33 @@ void MoveToMiddle(MotionController* motion_controller, int32_t range) {
   }
 }
 
+void MoveAtConstantSpeed(MotionController* motion_controller, float v) {
+  motion_controller->SetTargetSpeedRPM(v);
+}
+
+// Oscillate as fast as possible between x1 and x2 positions.
+void Oscillate(MotionController* motion_controller, int32_t range, int32_t x1, int32_t x2) {
+  static int32_t current_target = x1;
+  auto current_position = motion_controller->GetCurrentPosition();
+  if (fabs(current_position - current_target) < kPositionTolerance * range) {
+    float dist_to_x1 = fabs(current_position - x1);
+    float dist_to_x2 = fabs(current_position - x2);
+    if (dist_to_x1 > dist_to_x2) {
+      current_target = x1;
+    } else {
+      current_target = x2;
+    }
+  }
+  motion_controller->UpdateTargetSpeedByPosition(current_target, kMaxSpeed);
+}
+
+// Time based velocity oscillation without homing.
+void Oscillate(MotionController* motion_controller, float v, float period_s) {
+  float time_now = float(micros()) / 1000000.0f;
+  float scale = sin(2.0f * 3.14f / period_s * time_now);
+  motion_controller->SetTargetSpeedRPM(v * scale);
+}
+
 // ----------------------------------------------------------------
 
 void SetRGBLedColour(float r, float g, float b) {
@@ -55,6 +83,7 @@ void SetRGBLedColour(float r, float g, float b) {
 
 void setup() {
   pinMode(kLedData, OUTPUT);
+  pinMode(kPairSw, INPUT);
   
   g_rgb_led.begin();
   Serial.begin(115200);
@@ -68,6 +97,11 @@ void setup() {
 
 void loop() {
   auto t = millis();
+
+  if (digitalRead(kPairSw) == LOW) {
+    g_motion_controller.Stop();
+    for (;;) {}
+  }
 
   constexpr float kPeriodMs = 1000.0f;
   constexpr float kBrightness = 0.1f;
@@ -90,10 +124,13 @@ void loop() {
 
   static HomingController homing_controller(&g_motion_controller);
 
-  if (homing_controller.Done()) {
-    MoveToMiddle(&g_motion_controller, homing_controller.Range());
-  } else {
+  if (kUseStallGuardHoming && !homing_controller.Done()) {
     homing_controller.Update();
+  } else {
+    //Oscillate(&g_motion_controller, homing_controller.Range(), homing_controller.Range() * 0.3f, homing_controller.Range() * 0.7f);
+    //MoveToMiddle(&g_motion_controller, homing_controller.Range());
+    MoveAtConstantSpeed(&g_motion_controller, -kMaxSpeed);
+    //Oscillate(&g_motion_controller, kMaxSpeed / 10.0f, 10.0f);
   }
 
   // Run the control loop at approx 200 Hz.

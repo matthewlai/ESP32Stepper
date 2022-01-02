@@ -4,6 +4,7 @@
 class TMCDriver {
  public:
   virtual void Begin() = 0;
+  virtual void Stop() = 0;
   virtual void SetMotorCurrent(float new_current_setting) = 0;
   virtual uint32_t ReadStallGuardValue() = 0;
   virtual void SetStallGuardFiltering(bool filter_on) = 0;
