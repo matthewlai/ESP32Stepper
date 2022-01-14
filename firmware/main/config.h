@@ -4,10 +4,13 @@
 // Board config ---------------------------------------------------------------
 
 // First revision boards have TMC2590
-#define TMC2590
+//#define TMC2590
 
 // Second revision boards have TMC2160(A)
-//#define TMC2160
+#define TMC2160
+
+// Second revision has pair switch (currently used for stopping the driver).
+#define HAS_PAIR_SWITCH 1
 
 // ----------------------------------------------------------------------------
 
@@ -17,18 +20,18 @@
 constexpr float kMotorCurrentLimit = 1.6f;
 
 // Flip all directions.
-constexpr bool kFlipDrivingDirection = true;
+constexpr bool kFlipDrivingDirection = false;
 
 constexpr int kFullStepsPerRev = 200;
 
 // Maximum speed in Revs/s.
-constexpr float kMaxSpeed = 800;
+constexpr float kMaxSpeed = 13.3f; // 800 RPM
 
 // Maximum acceleration in Revs/s^2.
 constexpr float kMaxAcceleration = 500.0f;
 
 // Maximum jerk in Rev/s^3
-constexpr float kMaxJerk = 100000.0f;
+constexpr float kMaxJerk = 10000.0f;
 
 constexpr float kHomingSpeedRPM = 100.0f;
 constexpr float kHomingCurrent = 0.6f;
@@ -49,6 +52,7 @@ constexpr float kStallGuardMinSpeed = 60.0f;
 // ----------------------------------------------------------------------------
 
 // Motion planning config -----------------------------------------------------
+constexpr bool kUseStallGuardHoming = true;
 
 // Position controller will consider target reached when we get this close to
 // target position as a fraction of total range.

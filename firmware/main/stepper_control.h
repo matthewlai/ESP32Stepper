@@ -56,7 +56,7 @@ class MotionController {
   // Note that this class is fundamentally a velocity-based controller,
   // so this convenience function needs to be called before every update to update target 
   // velocity. This is NOT done automatically as part of Update();
-  void UpdateTargetSpeedByPosition(int32_t target_position, float max_speed_rpm);
+  void UpdateTargetSpeedByPosition(int32_t target_position, float max_speed);
 
   void Update();
 
@@ -125,7 +125,7 @@ void MotionController::SetTargetSpeed(float speed_rps) {
 }
 
 void MotionController::UpdateTargetSpeedByPosition(
-    int32_t target_position, float max_speed_rpm) {
+    int32_t target_position, float max_speed) {
   int32_t current_position = GetCurrentPosition();
   
   float position_error = fabs((target_position - current_position) * kRevsPerMicroStep);
@@ -155,9 +155,9 @@ void MotionController::UpdateTargetSpeedByPosition(
   float v = 0.0f;
 
   if (current_position < target_position) {
-    v = min(max_speed_rpm / 60.0f, v_abs);
+    v = min(max_speed, v_abs);
   } else {
-    v = max(-max_speed_rpm / 60.0f, -v_abs);
+    v = max(-max_speed, -v_abs);
   }
 
   SetTargetSpeed(v);
@@ -220,12 +220,6 @@ void MotionController::Update() {
     Serial.print("\t");
     Serial.print("SG:");
     Serial.println(driver_->ReadStallGuardValue());
-  }
-
-  static uint32_t last_debug_print_time = 0;
-  if ((time_now - last_debug_print_time) > 1000000) {
-    driver_->PrintDebugInfo();
-    last_debug_print_time = time_now;
   }
 
   current_speed_ = new_speed;

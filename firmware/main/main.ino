@@ -7,13 +7,17 @@
 
 #include "ble.h"
 #include "config.h"
+#include "crash.h"
 #include "delay_inserter.h"
 #include "homing_controller.h"
 #include "stepper_control.h"
 
 // Pin definitions ------------------------------------------------
 constexpr int kLedData = 21;
+
+#ifdef HAS_PAIR_SWITCH
 constexpr int kPairSw = 22;
+#endif
 // ----------------------------------------------------------------
 
 // Other Constants ------------------------------------------------
@@ -37,7 +41,7 @@ void MoveToMiddle(MotionController* motion_controller, int32_t range) {
 }
 
 void MoveAtConstantSpeed(MotionController* motion_controller, float v) {
-  motion_controller->SetTargetSpeedRPM(v);
+  motion_controller->SetTargetSpeed(v);
 }
 
 // Oscillate as fast as possible between x1 and x2 positions.
@@ -60,7 +64,15 @@ void Oscillate(MotionController* motion_controller, int32_t range, int32_t x1, i
 void Oscillate(MotionController* motion_controller, float v, float period_s) {
   float time_now = float(micros()) / 1000000.0f;
   float scale = sin(2.0f * 3.14f / period_s * time_now);
-  motion_controller->SetTargetSpeedRPM(v * scale);
+  motion_controller->SetTargetSpeed(v * scale);
+}
+
+// Switching direction as fast as possible.
+void AbruptOscillate(MotionController* motion_controller, float v, float period_s) {
+  float time_now = float(micros()) / 1000000.0f;
+  float mod = fmod(time_now, period_s);
+  float dir = (mod > (period_s / 2)) ? 1.0f : -1.0f;
+  motion_controller->SetTargetSpeed(dir * v);
 }
 
 // ----------------------------------------------------------------
@@ -81,9 +93,23 @@ void SetRGBLedColour(float r, float g, float b) {
   }
 }
 
+void CrashHandler(const String& msg) {
+  g_motion_controller.Stop();
+  for (;;) {
+    Serial.println(msg);
+    SetRGBLedColour(0.1f, 0.0f, 0.0f);
+    delay(500);
+    SetRGBLedColour(0.0f, 0.0f, 0.0f);
+    delay(500);
+  }
+}
+
 void setup() {
   pinMode(kLedData, OUTPUT);
+
+  #ifdef HAS_PAIR_SWITCH
   pinMode(kPairSw, INPUT);
+  #endif
   
   g_rgb_led.begin();
   Serial.begin(115200);
@@ -98,10 +124,12 @@ void setup() {
 void loop() {
   auto t = millis();
 
+  #ifdef HAS_PAIR_SWITCH
   if (digitalRead(kPairSw) == LOW) {
     g_motion_controller.Stop();
     for (;;) {}
   }
+  #endif
 
   constexpr float kPeriodMs = 1000.0f;
   constexpr float kBrightness = 0.1f;
@@ -127,10 +155,11 @@ void loop() {
   if (kUseStallGuardHoming && !homing_controller.Done()) {
     homing_controller.Update();
   } else {
-    //Oscillate(&g_motion_controller, homing_controller.Range(), homing_controller.Range() * 0.3f, homing_controller.Range() * 0.7f);
+    Oscillate(&g_motion_controller, homing_controller.Range(), homing_controller.Range() * 0.3f, homing_controller.Range() * 0.7f);
     //MoveToMiddle(&g_motion_controller, homing_controller.Range());
-    MoveAtConstantSpeed(&g_motion_controller, -kMaxSpeed);
-    //Oscillate(&g_motion_controller, kMaxSpeed / 10.0f, 10.0f);
+    //MoveAtConstantSpeed(&g_motion_controller, 60.0f);
+    //Oscillate(&g_motion_controller, kMaxSpeed, 2.0f);
+    //AbruptOscillate(&g_motion_controller, kMaxSpeed, 5.0f);
   }
 
   // Run the control loop at approx 200 Hz.
