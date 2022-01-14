@@ -56,6 +56,7 @@ class TMC2590Driver : public TMCDriver {
   TMC2590Driver();
 
   void Begin() override;
+  void Stop() override;
 
   uint32_t ReadStallGuardValue() override;
   void SetStallGuardFiltering(bool filter_on) override;
@@ -151,6 +152,11 @@ void TMC2590Driver::Begin() {
 
   // Enable motor drivers.
   digitalWrite(kTmcEn, LOW);
+}
+
+void TMC2590Driver::Stop() {
+  // Disable all motors.
+  digitalWrite(kTmcEn, HIGH);
 }
 
 uint32_t TMC2590Driver::ReadStallGuardValue() {
