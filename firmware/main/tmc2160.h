@@ -93,6 +93,11 @@ using kIHOLDDELAY = RegField<kIHOLD_IRUN, 16, 4>;
 using kDEDGE = RegField<kCHOPCONF, 29, 1>; // Step on both edges.
 using kINTPOL = RegField<kCHOPCONF, 28, 1>; // MicroPlyer interpolation.
 using kMRES = RegField<kCHOPCONF, 24, 4>; // Microstep resolution.
+using kTPFD = RegField<kCHOPCONF, 20, 4>; // Passive fast decay time.
+using kTBL = RegField<kCHOPCONF, 15, 2>; // TBL blanking time select.
+using kHEND = RegField<kCHOPCONF, 7, 4>; // Hysteresis low value.
+using kHSTART = RegField<kCHOPCONF, 4, 3>; // Hysteresis start value.
+using kTOFF = RegField<kCHOPCONF, 0, 4>; // Off time and driver enable.
 
 using kSFILT = RegField<kCOOLCONF, 24, 1>; // SG2 filter enable.
 using kSGT = RegField<kCOOLCONF, 16, 7>; // SG2 threshold.
@@ -213,8 +218,14 @@ void TMC2160Driver::Begin() {
 
   uint32_t chopconf = 0x000100c3;
   chopconf = WriteField<kDEDGE>(chopconf, 1);
-  chopconf = WriteField<kINTPOL>(chopconf, 0);
+  chopconf = WriteField<kINTPOL>(chopconf, 1);
   chopconf = WriteField<kMRES>(chopconf, kMicrostepsSetting);
+  chopconf = WriteField<kTOFF>(chopconf, 5);
+  chopconf = WriteField<kTBL>(chopconf, 2);
+
+  // Effective hysteresis = 4 (Page 58 example).
+  chopconf = WriteField<kHSTART>(chopconf, 2);
+  chopconf = WriteField<kHEND>(chopconf, 4);
 
   uint32_t drvconf = 0;
   drvconf = WriteField<kBBMTIME>(drvconf, 0);
