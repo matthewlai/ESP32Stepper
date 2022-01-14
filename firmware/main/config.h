@@ -47,7 +47,11 @@ constexpr float kHomingMaxJerk = 1000000.0f;
 constexpr int8_t kStallGuardThreshold[2] = { 3, 0 };
 
 // StallGuard doesn't work at very low velocities due to weak back-emf.
-constexpr float kStallGuardMinSpeed = 60.0f;
+// This is the speed in Rev/s below which StallGuard should not be trusted.
+// On TMC2160 this is done automatically on the driver side with TCOOLTHRS.
+// 1 RPS should work for most motors, but may need to be higher for motors
+// smaller than NEMA17.
+constexpr float kStallGuardMinSpeed = 1.0f;
 
 // ----------------------------------------------------------------------------
 
@@ -58,11 +62,8 @@ constexpr bool kUseStallGuardHoming = true;
 // target position as a fraction of total range.
 constexpr float kPositionTolerance = 0.01f;
 
-// Speed in RPM below which we consider the motor stopped.
-constexpr byte kSpeedEpsilon = 0.01f;
-
-// Velocities below this are ignored by the driver (assumed to be rounding
-// errors).
+// Velocities below this (Rev/s) are ignored by the driver (assumed to be
+// rounding errors).
 constexpr float kMinVelocity = 0.0001f;
 
 // ----------------------------------------------------------------------------
