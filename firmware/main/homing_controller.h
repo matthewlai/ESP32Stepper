@@ -44,6 +44,7 @@ void HomingController::Update() {
     motion_controller_->SetJerkLimit(kHomingMaxJerk);
     motion_controller_->Driver()->SetMotorCurrent(kHomingCurrent);
     phase_ = HomingPhase::kForward;
+    motion_controller_->Driver()->ClearStallFlag();
     break;
    case HomingPhase::kForward:
     motion_controller_->SetTargetSpeedRPM(kHomingSpeedRPM);
@@ -74,6 +75,7 @@ void HomingController::Update() {
       Serial.print("Backward Position: ");
       Serial.println(backward_position_);
     }
+    motion_controller_->Driver()->ClearStallFlag();
     break;
    case HomingPhase::kDone:
     break;

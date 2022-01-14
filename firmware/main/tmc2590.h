@@ -51,6 +51,9 @@ constexpr byte kMicrostepsPerFullStep = 4;
 constexpr float kRevsPerMicroStep = 1.0f / (kFullStepsPerRev * kMicrostepsPerFullStep);
 // ----------------------------------------------------------------
 
+// TODO: Implement latching stall detection.
+void IRAM_ATTR DriverStepHandler(void) {}
+
 class TMC2590Driver : public TMCDriver {
  public:
   TMC2590Driver();

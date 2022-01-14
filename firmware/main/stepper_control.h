@@ -37,6 +37,8 @@ void IRAM_ATTR StepperTimerHandler(void) {
   g_current_edge = !g_current_edge;
 
   g_current_position += g_current_dir_sign;
+
+  DriverStepHandler();
   portEXIT_CRITICAL_ISR(&g_stepper_timer_mux);
 }
 // ----------------------------------------------------------------

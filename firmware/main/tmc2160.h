@@ -74,9 +74,13 @@ constexpr uint8_t kGLOBALSCALER = 0x0b;
 constexpr uint8_t kIHOLD_IRUN = 0x10;
 constexpr uint8_t kTPOWERDOWN = 0x11;
 constexpr uint8_t kTPWMTHRS = 0x13;
+constexpr uint8_t kTCOOLTHRS = 0x14;
 constexpr uint8_t kCHOPCONF = 0x6c;
 constexpr uint8_t kCOOLCONF = 0x6d;
 constexpr uint8_t kDRV_STATUS = 0x6f;
+
+using kDiag0Stall = RegField<kGCONF, 7, 1>;
+using kDiag0IntPushPull = RegField<kGCONF, 12, 1>;
 
 // Break before make delay. 0=100ns, 16=200ns, 24=375ns.
 using kBBMTIME = RegField<kDRV_CONF, 0, 5>;
@@ -111,6 +115,36 @@ using kStealth = RegField<kDRV_STATUS, 14, 1>;
 using kSGResult = RegField<kDRV_STATUS, 0, 10>;
 // ----------------------------------------------------------------
 
+volatile bool g_stall_detected = false;
+
+void IRAM_ATTR DriverStepHandler(void) {
+  g_stall_detected |= digitalRead(kTmcDiag0);
+}
+
+namespace {
+// Calculate TSTEP value from Rev/s. This is used to set TCOOLTHRS
+// and THIGH. See "5.2 Velocity Dependent Driver Feature Control
+// Register Set" for more info.
+uint32_t CalculateTStepValue(float rps) {
+  constexpr float kInternalClockRate = 12000000.0f; // 12 MHz
+  // TStep is time between 2 1/256 microsteps in internal clock
+  // cycles, regardless of actual microstepping setting.
+  constexpr float k256MicrostepsPerRev = kFullStepsPerRev * 256;
+  constexpr uint32_t kMaxValue = (1UL << 20) - 1;
+  if (rps < kMinVelocity) {
+    return kMaxValue;
+  } else {
+    float microstep_rate = rps * k256MicrostepsPerRev;
+    uint32_t ret = static_cast<uint32_t>(kInternalClockRate / microstep_rate);
+    if (ret > kMaxValue) {
+      return kMaxValue;
+    } else {
+      return ret;
+    }
+  }
+}
+};
+
 class TMC2160Driver : public TMCDriver {
  public:
   TMC2160Driver();
@@ -127,6 +161,9 @@ class TMC2160Driver : public TMCDriver {
   int StepsPerRev() override { return kMicrostepsPerFullStep * kFullStepsPerRev; }
 
   void PrintDebugInfo() override;
+
+  bool IsStalled() override;
+  void ClearStallFlag() override;
 
  private:
   // This sets the max motor current to kMotorCurrentLimit using GLOBALSCALER.
@@ -216,6 +253,11 @@ void TMC2160Driver::Begin() {
   // This is based on the example initialisation sequence given in
   // 19.1 Initialization Examples
 
+  uint32_t gconf = 0x0;
+  // Enable diag0 on stall in push-pull mode.
+  gconf = WriteField<kDiag0Stall>(gconf, 1);
+  gconf = WriteField<kDiag0IntPushPull>(gconf, 1);
+
   uint32_t chopconf = 0x000100c3;
   chopconf = WriteField<kDEDGE>(chopconf, 1);
   chopconf = WriteField<kINTPOL>(chopconf, 1);
@@ -233,12 +275,13 @@ void TMC2160Driver::Begin() {
   drvconf = WriteField<kDRVSTRENGTH>(drvconf, 0);
   drvconf = WriteField<kFILT_ISENSE>(drvconf, 1);
 
+  WriteReg<kGCONF>(gconf);
   WriteReg<kCHOPCONF>(chopconf);
   WriteReg<kDRV_CONF>(drvconf);
   WriteReg<kIHOLD_IRUN>(0x00061f0a);
   WriteReg<kTPOWERDOWN>(0x0000000a);
-  WriteReg<kGCONF>(0x00000000);
   WriteReg<kTPWMTHRS>(0x000001f4);
+  WriteReg<kTCOOLTHRS>(CalculateTStepValue(kStallGuardMinSpeed));
 
   // Sanity check to make sure SPI is working. Unlike most other
   // registers, CHOPCONF is RW.
@@ -328,6 +371,14 @@ void TMC2160Driver::SetMaxMotorCurrent() {
 
   // Apply the remaining correction using CS.
   SetMotorCurrent(kMotorCurrentLimit);
+}
+
+bool TMC2160Driver::IsStalled() {
+  return g_stall_detected;
+}
+
+void TMC2160Driver::ClearStallFlag() {
+  g_stall_detected = false;
 }
 
 // TMC2160 requires 40-bit transactions (8-bit addr + 32-bit value), and return 20-bit status.
