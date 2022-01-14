@@ -1,4 +1,4 @@
-update=02/01/2022 23:28:39
+update=05/01/2022 16:09:13
 version=1
 last_client=kicad
 [cvpcb]
@@ -9,6 +9,16 @@ version=1
 [eeschema]
 version=1
 LibDir=
+[schematic_editor]
+version=1
+PageLayoutDescrFile=
+PlotDirectoryName=doc/
+SubpartIdSeparator=0
+SubpartFirstId=65
+NetFmtName=Pcbnew
+SpiceAjustPassiveValues=0
+LabSize=50
+ERC_TestSimilarLabels=1
 [pcbnew]
 version=1
 PageLayoutDescrFile=
@@ -27,15 +37,16 @@ MinMicroViaDrill=0
 MinHoleToHole=0.25
 TrackWidth1=0.127
 TrackWidth2=0.127
-TrackWidth3=0.254
-TrackWidth4=0.3048
-TrackWidth5=0.635
-TrackWidth6=1.016
-TrackWidth7=1.27
-TrackWidth8=1.905
-TrackWidth9=2.54
-TrackWidth10=3.81
-TrackWidth11=5.08
+TrackWidth3=0.146812
+TrackWidth4=0.254
+TrackWidth5=0.3048
+TrackWidth6=0.635
+TrackWidth7=1.016
+TrackWidth8=1.27
+TrackWidth9=1.905
+TrackWidth10=2.54
+TrackWidth11=3.81
+TrackWidth12=5.08
 ViaDiameter1=0.5
 ViaDrill1=0.2
 ViaDiameter2=0.5
@@ -264,13 +275,3 @@ uViaDrill=0.1
 dPairWidth=0.2
 dPairGap=0.25
 dPairViaGap=0.25
-[schematic_editor]
-version=1
-PageLayoutDescrFile=
-PlotDirectoryName=doc/
-SubpartIdSeparator=0
-SubpartFirstId=65
-NetFmtName=Pcbnew
-SpiceAjustPassiveValues=0
-LabSize=50
-ERC_TestSimilarLabels=1

@@ -137,4 +137,5 @@
   (lib (name dc_jack)(type KiCad)(uri ${KIPRJMOD}/footprints/dc_jack.pretty)(options "")(descr ""))
   (lib (name TMC2590-eval)(type KiCad)(uri ${KIPRJMOD}/footprints/TMC2590-eval.pretty)(options "")(descr ""))
   (lib (name cixi_kefa_screw_terminals)(type KiCad)(uri ${KIPRJMOD}/footprints/cixi_kefa_screw_terminals.pretty)(options "")(descr ""))
+  (lib (name KH3216)(type KiCad)(uri ${KIPRJMOD}/library/KH3216.pretty)(options "")(descr ""))
 )
