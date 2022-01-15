@@ -5,18 +5,6 @@
 
 #include "tmc_driver.h"
 
-// Pin definitions ------------------------------------------------
-// Drive low to enable motor drivers
-constexpr int kTmcEn = 4;
-
-// Stepping and direction outputs
-constexpr int kTmcStep = 25;
-constexpr int kTmcDir = 26;
-
-// StallGuard input, high indicates stall at "sufficient velocity"
-constexpr int kTmcSgTst = 27;
-// ----------------------------------------------------------------
-
 // Other Constants ------------------------------------------------
 // 4 MHz maximum speed with the TMC2590 on internal oscillator
 // MSB first, and SPI mode 3 (7.2 Bus Timing)

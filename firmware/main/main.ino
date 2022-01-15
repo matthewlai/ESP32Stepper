@@ -12,17 +12,6 @@
 #include "homing_controller.h"
 #include "stepper_control.h"
 
-// Pin definitions ------------------------------------------------
-constexpr int kLedData = 21;
-
-#ifdef HAS_PAIR_SWITCH
-constexpr int kPairSw = 22;
-#endif
-// ----------------------------------------------------------------
-
-// Other Constants ------------------------------------------------
-// ----------------------------------------------------------------
-
 // Globals --------------------------------------------------------
 Adafruit_NeoPixel g_rgb_led(/*count=*/1, kLedData);
 
@@ -128,6 +117,14 @@ void loop() {
   if (digitalRead(kPairSw) == LOW) {
     g_motion_controller.Stop();
     for (;;) {}
+  }
+  #endif
+
+  #ifdef HAS_VSENSE
+  // Over-voltage check
+  float vs = analogReadMilliVolts(kVSenseADCPin) / 1000.0f * kVSenseScale;
+  if (vs > kVsOvervoltageThreshold) {
+    CRASH_AND_BURN(String("VS Over-voltage detected! VS=") + String(vs) + "V");
   }
   #endif
 

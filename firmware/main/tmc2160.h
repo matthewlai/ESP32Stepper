@@ -3,25 +3,11 @@
 
 #ifdef TMC2160
 
+#include "crash.h"
 #include "float_utils.h"
 #include "tmc_driver.h"
 
 #include <type_traits>
-
-// Pin definitions ------------------------------------------------
-// Drive low to enable motor drivers
-constexpr int kTmcEn = 4;
-
-// Stepping and direction outputs
-constexpr int kTmcStep = 25;
-constexpr int kTmcDir = 26;
-
-constexpr int kTmcDiag0 = 15;
-constexpr int kTmcDiag1 = 13;
-
-constexpr int kTmcDco = 16;
-constexpr int kTmcDcEn = 17;
-// ----------------------------------------------------------------
 
 // Other Constants ------------------------------------------------
 // 4 MHz maximum speed with the TMC2160 on internal oscillator
@@ -285,15 +271,8 @@ void TMC2160Driver::Begin() {
 
   // Sanity check to make sure SPI is working. Unlike most other
   // registers, CHOPCONF is RW.
-  for (;;) {
-    uint32_t read_value = ReadReg<kCHOPCONF>();
-    if (read_value == chopconf) {
-      break;
-    } else {
-      Serial.printf("Unexpected CHOPCONF readback: %u\n", read_value);
-      WriteReg<kCHOPCONF>(chopconf);
-    }
-    delay(1000);
+  if (ReadReg<kCHOPCONF>() != chopconf) {
+    CRASH_AND_BURN("SPI read-back sanity check failed. Is the chip dead?");
   }
 
   SetMaxMotorCurrent();
@@ -356,14 +335,14 @@ void TMC2160Driver::PrintDebugInfo() {
 
 void TMC2160Driver::SetMaxMotorCurrent() {
   // RMS current = GLOBALSCALER / 256 * (CS + 1) / 32 * Vfs / Rsense * 1 / sqrt(2)
-  float full_scale_current_limit = kVFullScale / kRSense / kSqrt2;
-  float scaler_f = 256.0f * kMotorCurrentLimit / full_scale_current_limit;
+  constexpr float kFullScaleCurrentLimit = kVFullScale / kRSense / kSqrt2;
+  constexpr float kScalerF = 256.0f * kMotorCurrentLimit / kFullScaleCurrentLimit;
 
   // Minimum allowed value is 32.
-  uint32_t clamped_scaler = RoundWithClamping(scaler_f, 32, 256);
+  uint32_t clamped_scaler = RoundWithClamping(kScalerF, 32, 256);
   WriteReg<kGLOBALSCALER>((clamped_scaler == 256) ? 0 : clamped_scaler);
 
-  scaled_max_current_ = float(clamped_scaler) / 256.0f * full_scale_current_limit;
+  scaled_max_current_ = float(clamped_scaler) / 256.0f * kFullScaleCurrentLimit;
 
   Serial.printf("Requested max current: %f\n", kMotorCurrentLimit);
   Serial.printf("GLOBALSCALER set to: %u\n", clamped_scaler);

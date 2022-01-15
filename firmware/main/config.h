@@ -1,16 +1,15 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Board config ---------------------------------------------------------------
+// Board selection ------------------------------------------------------------
 
-// First revision boards have TMC2590
-//#define TMC2590
+// Uncomment one of the following:
 
-// Second revision boards have TMC2160(A)
-#define TMC2160
+// First revision boards with TMC2590
+//#define HW_REV 1
 
-// Second revision has pair switch (currently used for stopping the driver).
-#define HAS_PAIR_SWITCH 1
+// Second revision boards with TMC2160(A)
+#define HW_REV 2
 
 // ----------------------------------------------------------------------------
 
@@ -68,11 +67,54 @@ constexpr float kMinVelocity = 0.0001f;
 
 // ----------------------------------------------------------------------------
 
-// Program Config -------------------------------------------------------------
+// Program config -------------------------------------------------------------
 
 // Output all stepper / trajectory parameters at each control step for plotting.
 // (Can cause step skipping due to the volume of data printed).
 constexpr bool kStepperDebugPlotting = false;
+
+// ----------------------------------------------------------------------------
+
+// Board definitions ----------------------------------------------------------
+#if HW_REV == 1
+#define TMC2590
+#else
+#define TMC2160
+#endif
+
+#if HW_REV == 1
+
+constexpr int kLedData = 21;
+
+constexpr int kTmcEn = 4;
+constexpr int kTmcStep = 25;
+constexpr int kTmcDir = 26;
+constexpr int kTmcSgTst = 27;
+
+#elif HW_REV == 2
+
+constexpr int kLedData = 21;
+
+// Second revision has pair switch (currently used for stopping the driver).
+#define HAS_PAIR_SWITCH
+constexpr int kPairSw = 22;
+
+#define HAS_VSENSE
+constexpr int kVSenseADCPin = 36;
+constexpr float kVSenseScale = (10000.0f + 470.0f) / 470.0f;
+constexpr float kVsOvervoltageThreshold = 38.0f;
+
+constexpr int kTmcEn = 4;
+constexpr int kTmcStep = 25;
+constexpr int kTmcDir = 26;
+
+constexpr int kTmcDiag0 = 15;
+constexpr int kTmcDiag1 = 13;
+
+constexpr int kTmcDco = 16;
+constexpr int kTmcDcEn = 17;
+
+#endif
 
 // ----------------------------------------------------------------------------
 
