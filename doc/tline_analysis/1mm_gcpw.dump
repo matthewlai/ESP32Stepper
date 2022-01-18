@@ -2,7 +2,7 @@
 
 		DUMP OF GEOMETRY
 
-cntr_seg=50, pln_seg=50, coupling=0.0508, risetime=2.5e-011
+cntr_seg=100, pln_seg=100, coupling=0.0508, risetime=2.5e-011
 conductivity=5.8e+007, frequency=1e+008, half min dim=1.7526e-005
 1 ground planes, top thickness=1, bottom thickness=1
 
