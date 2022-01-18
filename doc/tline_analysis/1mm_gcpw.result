@@ -1,0 +1,44 @@
+
+2022 01 17 11:25:36 m NMMTL_2DLF
+
+File = C:/Data/Repositories/ESP32Stepper/doc/tline_analysis/1mm_gcpw
+Number of Signal Lines  =   1
+Number of Ground Planes =   1
+Number of Ground Wires  =   2
+Coupling Length =   0.05080 meters
+Rise Time =    25.0000 picoseconds
+Contour (conductor) segments [cseg] = 50
+Ground Plane/Dielectric segments [dseg] = 50
+Conductivity condR0 = 5e+007 siemens/meter
+Note: minimum frequency for surface current assumptions is 413 MHz.
+Mutual and Self Electrostatic Induction:
+B(Active Signal , Passive Signal) Farads/Meter
+B( ::condR0 , ::condR0 )=  1.2111828e-010
+
+Mutual and Self Inductance:
+L(Active Signal , Passive Signal) Henrys/Meter
+L( ::condR0 , ::condR0 )=  2.7908925e-007
+
+Characteristic Impedance (Ohms):
+For Signal Line ::condR0= 48.0028
+
+Effective Dielectric Constant:
+For Signal Line ::condR0= 3.04225
+
+Propagation Velocity (meters/second):
+For Signal Line ::condR0=  1.7187912e+008
+
+Propagation Delay (seconds/meter):
+For Signal Line ::condR0=  5.8180424e-009
+
+Rdc:
+Rdc(Active Signal , Passive Signal) Ohms/Meter
+Rdc( ::condR0 , ::condR0 )=  1.9348675e+000
+
+Far-End (Forward) Cross Talk:
+FXT(Active Signal, Passive Signal)
+
+Near-End (Backward) Cross Talk:
+BXT(Active Signal, Passive Signal)
+
+NOTE: Cross talk results assume there are no reflections.

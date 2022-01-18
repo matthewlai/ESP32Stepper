@@ -1,0 +1,21 @@
+--------------------------------------------------------
+Resistance/Inductance Values
+Input file: C:/Data/Repositories/ESP32Stepper/doc/tline_analysis/1mm_gcpw.ri.in
+--------------------------------------------------------
+Frequency: 2.45e+09     Conductivity: 5e+07
+
+3X3 Resistance Matrix (Ohm/m):
+
+86.4369     0.122961     32.8852     
+
+3X3 Inductance Matrix (H/m):
+
+-3.72965e-09     2.54328e-10     7.3369e-09     
+
+2.54328e-10     -1.78328e-08     5.52941e-10     
+
+7.3369e-09     5.52941e-10     -1.28698e-08     
+
+
+
+

@@ -1,0 +1,10 @@
+@ title "Inductance"
+@ subtitle "C:/Data/Repositories/ESP32Stepper/doc/tline_analysis/1mm_gcpw.ri.out.inductance"
+@ yaxis label "Ohm/m"
+@ legend string 0 "Signal1,Signal1"
+@ legend string 1 "Signal1,Signal2"
+@ legend string 2 "Signal2,Signal1"
+@ legend string 3 "Signal2,Signal2"
+@ type nxy
+2.45e+09 -3.72965 0.254328 7.3369 0.254328 -17.8328 0.552941 7.3369 0.552941 -12.8698
+339 32.8852 0.281339 105.708

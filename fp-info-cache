@@ -1,4 +1,4 @@
-19231189003113090
+19234474606068894
 Amphenol
 Amphenol_1140084168
 
@@ -6,6 +6,13 @@ Amphenol_1140084168
 0
 14
 11
+Antennas
+TI_DN007_2.4GHz
+
+
+0
+22
+2
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -50854,6 +50861,13 @@ ESP-11
 0
 8
 8
+ESP32-PICO-D4
+ESP32-PICO-D4
+QFN, 48 Pin (http://www.st.com/resource/en/datasheet/stm32f042k6.pdf#page=94), generated with kicad-footprint-generator ipc_noLead_generator.py
+QFN NoLead
+0
+86
+49
 Ferrite_THT
 LairdTech_28C0236-0JW-10
 Ferrite, vertical, LairdTech 28C0236-0JW-10, https://assets.lairdtech.com/home/brandworld/files/28C0236-0JW-10.pdf, JW Miller core https://www.bourns.com/products/magnetic-products/j.w.-miller-through-hole-ferrite-beads-emi-filters

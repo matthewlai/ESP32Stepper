@@ -1,0 +1,42 @@
+#----------------------------------
+# File:  C:/Data/Repositories/ESP32Stepper/doc/tline_analysis/1mm_gcpw.xsctn
+# Mon Jan 17 11:28:39 GMT Standard Time 2022
+#----------------------------------
+
+package require csdl
+
+set _title "1mm JLC7628 GCPW"
+set ::Stackup::couplingLength "0.0508"
+set ::Stackup::riseTime "25"
+set ::Stackup::frequency "1000MHz"
+set ::Stackup::defaultLengthUnits "mils"
+set CSEG 50
+set DSEG 50
+
+GroundPlane ground  \
+	 -thickness 0.689 \
+	 -yOffset 0.0 \
+	 -xOffset 0.0
+DielectricLayer diel1  \
+	 -thickness 7.1 \
+	 -lossTangent 0.0002 \
+	 -permittivity 4.6 \
+	 -permeability 1.0 \
+	 -yOffset 0.0 \
+	 -xOffset 0.0
+RectangleConductors groundWires  \
+	 -width 30 \
+	 -pitch 57.35 \
+	 -conductivity 5.0e7S/m \
+	 -height 1.38 \
+	 -number 2 \
+	 -yOffset 0 \
+	 -xOffset 0
+RectangleConductors cond  \
+	 -width 11.61 \
+	 -pitch 12 \
+	 -conductivity 5.0e7S/m \
+	 -height 1.38 \
+	 -number 1 \
+	 -yOffset 0 \
+	 -xOffset 37.87
