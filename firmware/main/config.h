@@ -9,7 +9,10 @@
 //#define HW_REV 1
 
 // Second revision boards with TMC2160(A)
-#define HW_REV 2
+//#define HW_REV 2
+
+// Third revision boards with TMC2160(A) and ESP32-PICO-D4
+#define HW_REV 3
 
 // ----------------------------------------------------------------------------
 
@@ -113,6 +116,29 @@ constexpr int kTmcDiag1 = 13;
 
 constexpr int kTmcDco = 16;
 constexpr int kTmcDcEn = 17;
+
+#elif HW_REV == 3
+
+constexpr int kLedData = 21;
+
+// Second revision has pair switch (currently used for stopping the driver).
+#define HAS_PAIR_SWITCH
+constexpr int kPairSw = 22;
+
+#define HAS_VSENSE
+constexpr int kVSenseADCPin = 36;
+constexpr float kVSenseScale = (10000.0f + 150.0f) / 150.0f;
+constexpr float kVsOvervoltageThreshold = 38.0f;
+
+constexpr int kTmcEn = 15;
+constexpr int kTmcStep = 25;
+constexpr int kTmcDir = 26;
+
+constexpr int kTmcDiag0 = 4;
+constexpr int kTmcDiag1 = 2;
+
+constexpr int kTmcDco = 9;
+constexpr int kTmcDcEn = 10;
 
 #endif
 
